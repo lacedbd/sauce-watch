@@ -315,27 +315,51 @@
                     playsinline: 1,
                     disablekb: 1,
                     fs: 0,
-                    modestbranding: 1
+                    modestbranding: 1,
+                    vq: 'hd1080'
                 },
                 events: {
                     onReady: (event) => {
+                        event.target.setPlaybackQuality('hd1080');
                         event.target.mute();
                         event.target.playVideo();
                     },
                     onStateChange: (event) => {
+                        const container = document.getElementById('trailerPlayerContainer');
+                        const staticImg = document.getElementById('backdropStatic');
+                        
                         if (event.data === YT.PlayerState.PLAYING) {
-                            // Wait 2.8s for YouTube overlays & controls to auto-hide before revealing the video
-                            setTimeout(() => {
-                                const container = document.getElementById('trailerPlayerContainer');
-                                const staticImg = document.getElementById('backdropStatic');
-                                if (container) container.classList.add('is-playing');
-                                if (staticImg) staticImg.style.opacity = '0';
-                                document.getElementById('trailerVolumeBtn').classList.remove('hidden');
-                                // Activate idle-mode: mouse stops moving → UI collapses to show trailer
-                                if (!trailerIsPlaying) enableHeroFocusMode();
-                            }, 2800);
+                            event.target.setPlaybackQuality('hd1080'); // Force high quality
+                            
+                            if (!container.dataset.hasPlayed) {
+                                container.dataset.hasPlayed = "true";
+                                // Wait 2.8s for YouTube overlays & controls to auto-hide before revealing the video
+                                setTimeout(() => {
+                                    if (container) {
+                                        container.style.transition = '';
+                                        container.classList.add('is-playing');
+                                    }
+                                    if (staticImg) staticImg.style.opacity = '0';
+                                    document.getElementById('trailerVolumeBtn').classList.remove('hidden');
+                                    // Activate idle-mode: mouse stops moving → UI collapses to show trailer
+                                    if (!trailerIsPlaying) enableHeroFocusMode();
+                                }, 2800);
+                            } else {
+                                // Resuming from background tab pause
+                                if (container) {
+                                    container.style.transition = '';
+                                    container.style.opacity = '';
+                                    container.classList.add('is-playing');
+                                }
+                            }
                         }
                         if (event.data === YT.PlayerState.PAUSED) {
+                            // Immediately hide container to prevent showing the big center pause icon when tab loses focus
+                            if (container) {
+                                container.style.transition = 'none';
+                                container.style.opacity = '0';
+                                container.classList.remove('is-playing');
+                            }
                             event.target.playVideo();
                         }
                     }
