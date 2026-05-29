@@ -321,7 +321,7 @@
                             
                             if (!wrapper.dataset.hasPlayed) {
                                 wrapper.dataset.hasPlayed = "true";
-                                // THE MAGIC TRICK: Wait 2.8s for YouTube overlays to auto-hide before revealing
+                                // THE MAGIC TRICK: Wait 4.0s for YouTube overlays to auto-hide before revealing
                                 setTimeout(() => {
                                     if (wrapper) {
                                         wrapper.style.transition = '';
@@ -332,13 +332,16 @@
                                     
                                     // Activate idle-mode: mouse stops moving → UI collapses to show trailer
                                     if (!trailerIsPlaying) enableHeroFocusMode();
-                                }, 2800);
+                                }, 4000);
                             } else {
                                 // Resuming from background tab pause
-                                if (wrapper) {
-                                    wrapper.style.transition = '';
-                                    wrapper.classList.remove('opacity-0');
-                                }
+                                // YouTube redraws the play icon on pause, so we must wait for it to fade out again
+                                setTimeout(() => {
+                                    if (wrapper) {
+                                        wrapper.style.transition = '';
+                                        wrapper.classList.remove('opacity-0');
+                                    }
+                                }, 2000);
                             }
                         }
                         if (event.data === YT.PlayerState.PAUSED) {
