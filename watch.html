@@ -725,10 +725,12 @@
                         const year = dateText ? dateText.split('-')[0] : "";
                         const typeLabel = type === 'tv' ? 'TV Show' : 'Movie';
 
+                        const rtScore = Math.round(item.vote_average * 10);
+
                         card.innerHTML = `
                             <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-zinc-800 border border-white/5 group-hover:border-white/20 transition-all shadow-lg">
                                 <img src="${POSTER_BASE}${item.backdrop_path}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
-                                <img id="logo-${item.id}" src="" class="absolute bottom-2 left-2 w-1/3 object-contain drop-shadow-md hidden z-10 pointer-events-none">
+                                <img id="logo-${item.id}" src="" class="absolute bottom-2 left-2 w-1/3 object-contain drop-shadow-md hidden z-10 pointer-events-none transition-opacity duration-500">
                                 <div class="absolute inset-0 flex justify-center items-center opacity-0 transition-opacity z-20 pointer-events-none" id="hover-spinner-${item.id}">
                                     <div class="w-8 h-8 border-2 border-white/20 border-t-red-600 rounded-full animate-spin"></div>
                                 </div>
@@ -743,7 +745,8 @@
                             <div class="px-1 mt-2">
                                 <h5 class="font-bold text-sm text-white truncate w-full group-hover:text-red-400 transition-colors">${title}</h5>
                                 <div class="flex items-center gap-2 text-[11px] text-zinc-400 font-medium mt-0.5">
-                                    <span class="text-yellow-500"><i class="fas fa-star text-[9px] mr-0.5"></i> ${rating}</span>
+                                    <span class="text-yellow-500 flex items-center"><i class="fas fa-star text-[9px] mr-0.5"></i> ${rating}</span>
+                                    <span class="text-white flex items-center gap-0.5"><span class="text-[10px]">🍅</span> ${rtScore}%</span>
                                     ${year ? `<span class="opacity-40">•</span><span>${year}</span>` : ''}
                                     <span class="opacity-40">•</span><span>${typeLabel}</span>
                                 </div>
@@ -772,12 +775,14 @@
                             const trailerPlayerDiv = card.querySelector(`#trailer-player-${item.id}`);
                             const volIcon = card.querySelector(`#volIcon-${item.id}`);
                             const spinner = card.querySelector(`#hover-spinner-${item.id}`);
+                            const cardLogo = card.querySelector(`#logo-${item.id}`);
 
                             card.addEventListener('mouseenter', () => {
                                 hoverTimer = setTimeout(async () => {
                                     if (cardYtPlayer) {
                                         trailerWrapper.style.opacity = '1';
                                         volIcon.classList.remove('opacity-0');
+                                        if (cardLogo) cardLogo.classList.add('opacity-0');
                                         return;
                                     }
                                     
@@ -826,6 +831,7 @@
                                                                     trailerWrapper.style.opacity = '1';
                                                                     volIcon.classList.remove('opacity-0');
                                                                     spinner.classList.add('opacity-0');
+                                                                    if (cardLogo) cardLogo.classList.add('opacity-0');
                                                                 }
                                                             }, 4000);
                                                         }
@@ -849,6 +855,7 @@
                             card.addEventListener('mouseleave', () => {
                                 clearTimeout(hoverTimer);
                                 spinner.classList.add('opacity-0');
+                                if (cardLogo) cardLogo.classList.remove('opacity-0');
                                 trailerWrapper.style.transition = 'none';
                                 trailerWrapper.style.opacity = '0.01';
                                 volIcon.classList.add('opacity-0');

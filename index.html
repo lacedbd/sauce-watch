@@ -537,13 +537,15 @@
       card.className = "relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3] block";
 
       const rating = item.vote_average ? item.vote_average.toFixed(1) : "0.0";
+      const rtScore = Math.round((item.vote_average || 0) * 10);
       const title = item.title || item.name;
       const genresText = getGenresText(item.genre_ids);
 
       card.innerHTML = `
                 <img src="${POSTER_BASE}${item.poster_path}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400">
-                    <i class="fas fa-star text-[8px] mr-1"></i> ${rating}
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold flex flex-col items-end gap-0.5">
+                    <div class="text-yellow-400 flex items-center"><i class="fas fa-star text-[8px] mr-1"></i> ${rating}</div>
+                    <div class="text-white flex items-center gap-0.5"><span class="text-[9px]">🍅</span> ${rtScore}%</div>
                 </div>
                 <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
                     <h5 class="font-bold text-sm text-white truncate drop-shadow-md">${title}</h5>
