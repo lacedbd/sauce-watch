@@ -728,14 +728,18 @@
                         card.innerHTML = `
                             <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-zinc-800 border border-white/5 group-hover:border-white/20 transition-all shadow-lg">
                                 <img src="${POSTER_BASE}${item.backdrop_path}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
-                                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-white flex items-center gap-1 opacity-0 transition-opacity" id="volIcon-${item.id}">
+                                <img id="logo-${item.id}" src="" class="absolute bottom-2 left-2 w-1/3 object-contain drop-shadow-md hidden z-10 pointer-events-none">
+                                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-white flex items-center gap-1 opacity-0 transition-opacity z-10" id="volIcon-${item.id}">
                                     <i class="fas fa-volume-mute text-xs"></i>
                                 </div>
-                                <div id="trailer-container-${item.id}" class="absolute inset-0 pointer-events-none opacity-0 transition-opacity duration-700"></div>
+                                <!-- Massive wrapper to push YT UI off-screen -->
+                                <div id="trailer-wrapper-${item.id}" class="absolute top-1/2 left-1/2 w-[300%] h-[300%] -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0 opacity-0 transition-opacity duration-700" style="opacity: 0.01;">
+                                    <div id="trailer-container-${item.id}" class="w-full h-full pointer-events-none"></div>
+                                </div>
                             </div>
-                            <div class="px-1">
+                            <div class="px-1 mt-2">
                                 <h5 class="font-bold text-sm text-white truncate w-full group-hover:text-red-400 transition-colors">${title}</h5>
-                                <div class="flex items-center gap-2 text-[11px] text-zinc-400 font-medium mt-1">
+                                <div class="flex items-center gap-2 text-[11px] text-zinc-400 font-medium mt-0.5">
                                     <span class="text-yellow-500"><i class="fas fa-star text-[9px] mr-0.5"></i> ${rating}</span>
                                     ${year ? `<span class="opacity-40">•</span><span>${year}</span>` : ''}
                                     <span class="opacity-40">•</span><span>${typeLabel}</span>
@@ -743,16 +747,31 @@
                             </div>
                         `;
 
+                        // Fetch Logo dynamically
+                        fetch(`${TMDB_BASE}/${type}/${item.id}/images?api_key=${TMDB_API_KEY}`)
+                            .then(res => res.json())
+                            .then(imagesData => {
+                                const logos = imagesData.logos || [];
+                                const englishLogo = logos.find(l => l.iso_639_1 === 'en');
+                                const logoToUse = englishLogo || logos[0];
+                                if (logoToUse && logoToUse.file_path) {
+                                    const logoImg = card.querySelector(`#logo-${item.id}`);
+                                    logoImg.src = `https://image.tmdb.org/t/p/w500${logoToUse.file_path}`;
+                                    logoImg.classList.remove('hidden');
+                                }
+                            }).catch(console.error);
+
                         // Add Hover Trailer Logic (only on desktop/non-touch)
                         if (!('ontouchstart' in window)) {
                             let hoverTimer = null;
+                            const trailerWrapper = card.querySelector(`#trailer-wrapper-${item.id}`);
                             const trailerContainer = card.querySelector(`#trailer-container-${item.id}`);
                             const volIcon = card.querySelector(`#volIcon-${item.id}`);
 
                             card.addEventListener('mouseenter', () => {
                                 hoverTimer = setTimeout(async () => {
                                     if (trailerContainer.innerHTML !== '') {
-                                        trailerContainer.classList.remove('opacity-0');
+                                        trailerWrapper.style.opacity = '1';
                                         volIcon.classList.remove('opacity-0');
                                         return;
                                     }
@@ -764,18 +783,18 @@
                                         
                                         if (trailer) {
                                             trailerContainer.innerHTML = `
-                                                <iframe class="w-full h-full absolute inset-0 transform scale-150 pointer-events-none" 
+                                                <iframe class="w-full h-full pointer-events-none" 
                                                     src="https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&loop=1&playlist=${trailer.key}" 
                                                     frameborder="0" allow="autoplay; encrypted-media">
                                                 </iframe>
                                             `;
-                                            // Slight delay before fading in to let iframe load
+                                            // Delay reveal to hide initial YT flash
                                             setTimeout(() => {
                                                 if (card.matches(':hover')) {
-                                                    trailerContainer.classList.remove('opacity-0');
+                                                    trailerWrapper.style.opacity = '1';
                                                     volIcon.classList.remove('opacity-0');
                                                 }
-                                            }, 800);
+                                            }, 2000);
                                         }
                                     } catch (e) { console.error(e); }
                                 }, 500); // 500ms hover intent delay
@@ -783,7 +802,7 @@
 
                             card.addEventListener('mouseleave', () => {
                                 clearTimeout(hoverTimer);
-                                trailerContainer.classList.add('opacity-0');
+                                trailerWrapper.style.opacity = '0.01';
                                 volIcon.classList.add('opacity-0');
                                 // Destroy iframe after fade out to save resources
                                 setTimeout(() => {
