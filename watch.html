@@ -735,8 +735,8 @@
                                 <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-white flex items-center gap-1 opacity-0 transition-opacity z-10" id="volIcon-${item.id}">
                                     <i class="fas fa-volume-mute text-xs"></i>
                                 </div>
-                                <!-- Massive wrapper to push YT UI off-screen -->
-                                <div id="trailer-wrapper-${item.id}" class="absolute inset-0 w-full h-full transform scale-[3] origin-center pointer-events-none z-0 opacity-0 transition-opacity duration-700" style="opacity: 0.01;">
+                                <!-- Normal wrapper, relying on 4.0s timeout to hide YouTube UI -->
+                                <div id="trailer-wrapper-${item.id}" class="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-0 transition-opacity duration-700" style="opacity: 0.01;">
                                     <div id="trailer-player-${item.id}" class="w-full h-full pointer-events-none"></div>
                                 </div>
                             </div>
@@ -819,7 +819,7 @@
                                                         if (event.data === YT.PlayerState.PLAYING) {
                                                             event.target.setPlaybackQuality('small');
                                                             // Hide UI by waiting a moment after it starts playing
-                                                            // We wait 3.0s to ensure the YouTube play button and title completely fade out
+                                                            // We wait 4.0s to ensure the YouTube play button and title completely fade out
                                                             setTimeout(() => {
                                                                 if (card.matches(':hover') && trailerWrapper) {
                                                                     trailerWrapper.style.transition = 'opacity 0.8s ease';
@@ -827,7 +827,11 @@
                                                                     volIcon.classList.remove('opacity-0');
                                                                     spinner.classList.add('opacity-0');
                                                                 }
-                                                            }, 3000);
+                                                            }, 4000);
+                                                        }
+                                                        if (event.data === YT.PlayerState.PAUSED) {
+                                                            // Force play if it randomly pauses
+                                                            event.target.playVideo();
                                                         }
                                                     }
                                                 }
