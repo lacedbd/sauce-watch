@@ -191,6 +191,60 @@
         let currentServer = 'vidsrc';
         let isMuted = true;
 
+        // YouTube IFrame Player API Integration
+        let trailerPlayer;
+        let ytApiReady = false;
+        let pendingTrailerKey = '';
+
+        // Load YouTube IFrame Player API script dynamically
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        window.onYouTubeIframeAPIReady = () => {
+            ytApiReady = true;
+            if (pendingTrailerKey) {
+                setupTrailerPlayer(pendingTrailerKey);
+            }
+        };
+
+        function setupTrailerPlayer(videoKey) {
+            // Replaces <div id="trailerPlayer"> with <iframe> with precise options
+            trailerPlayer = new YT.Player('trailerPlayer', {
+                width: '1920',
+                height: '1080',
+                videoId: videoKey,
+                playerVars: {
+                    autoplay: 1,
+                    mute: 1,
+                    controls: 0,
+                    showinfo: 0,
+                    rel: 0,
+                    iv_load_policy: 3,
+                    loop: 1,
+                    playlist: videoKey,
+                    playsinline: 1,
+                    disablekb: 1,
+                    fs: 0,
+                    modestbranding: 1
+                },
+                events: {
+                    onReady: (event) => {
+                        event.target.playVideo();
+                        event.target.mute();
+                    },
+                    onStateChange: (event) => {
+                        // Force play if paused (handles user pause triggers or auto-pauses)
+                        if (event.data === YT.PlayerState.PAUSED) {
+                            event.target.playVideo();
+                        }
+                    }
+                }
+            });
+            document.getElementById('trailerVolumeBtn').classList.remove('hidden');
+        }
+
         // Switch stream server inside the modal player
         function switchServer(serverKey) {
             const playerIframe = document.getElementById('videoPlayer');
@@ -239,32 +293,23 @@
                 if (trailer) {
                     const playerContainer = document.getElementById('trailerPlayerContainer');
                     if (playerContainer) {
-                        playerContainer.innerHTML = `
-                            <iframe id="trailerPlayer" class="pointer-events-none" 
-                                    width="1920" height="1080"
-                                    src="https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&loop=1&playlist=${trailer.key}&controls=0&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&enablejsapi=1" 
-                                    frameborder="0" allow="autoplay; encrypted-media">
-                            </iframe>
-                        `;
+                        // Create placeholder div that YouTube API replaces
+                        playerContainer.innerHTML = `<div id="trailerPlayer" class="pointer-events-none"></div>`;
                         
-                        const iframe = document.getElementById('trailerPlayer');
-                        
-                        // Force play/mute commands on iframe load
-                        iframe.onload = () => {
-                            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo' }), '*');
-                            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'mute' }), '*');
-                        };
+                        if (ytApiReady) {
+                            setupTrailerPlayer(trailer.key);
+                        } else {
+                            pendingTrailerKey = trailer.key;
+                        }
 
                         // Fallback trigger: play video on first click/tap to bypass browser autoplay policies
                         const triggerAutoplay = () => {
-                            if (iframe && iframe.contentWindow) {
-                                iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo' }), '*');
+                            if (trailerPlayer && typeof trailerPlayer.playVideo === 'function') {
+                                trailerPlayer.playVideo();
                             }
                         };
                         document.body.addEventListener('click', triggerAutoplay, { once: true });
                         document.body.addEventListener('touchstart', triggerAutoplay, { once: true });
-
-                        document.getElementById('trailerVolumeBtn').classList.remove('hidden');
                     }
                 }
             } catch (err) {
@@ -272,19 +317,18 @@
             }
         }
 
-        // Toggle volume for YouTube trailer background
+        // Toggle volume for YouTube trailer background using official Player API
         document.getElementById('trailerVolumeBtn').addEventListener('click', () => {
-            const iframe = document.getElementById('trailerPlayer');
-            if (!iframe) return;
+            if (!trailerPlayer || typeof trailerPlayer.mute !== 'function') return;
             
             isMuted = !isMuted;
             const volumeIcon = document.getElementById('volumeIcon');
             
             if (isMuted) {
-                iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'mute' }), '*');
+                trailerPlayer.mute();
                 volumeIcon.className = "fas fa-volume-mute";
             } else {
-                iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unMute' }), '*');
+                trailerPlayer.unMute();
                 volumeIcon.className = "fas fa-volume-up text-red-500";
             }
         });
@@ -292,10 +336,9 @@
         // Open Cinema modal player
         function openPlayerModal() {
             // If background trailer trailer is active and unmuted, mute it first
-            const iframe = document.getElementById('trailerPlayer');
-            if (iframe && !isMuted) {
+            if (trailerPlayer && typeof trailerPlayer.mute === 'function' && !isMuted) {
                 isMuted = true;
-                iframe.contentWindow.postMessage('{"event":"command","func":"mute","args":""}', '*');
+                trailerPlayer.mute();
                 document.getElementById('volumeIcon').className = "fas fa-volume-mute";
             }
             
