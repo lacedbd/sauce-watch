@@ -142,26 +142,25 @@
         <div class="absolute inset-0 bg-gradient-to-r from-zinc-950/40 via-transparent to-transparent z-10 pointer-events-none"></div>
 
         <!-- Overlaid text & options details -->
-        <div id="heroContent" class="relative z-20 max-w-4xl px-6 md:px-12 pb-16 space-y-4">
+        <div id="heroContent" class="relative z-20 max-w-4xl px-6 md:px-12 pb-16 space-y-4 opacity-0 transition-opacity duration-700">
             <div id="heroTitle" class="block">
-                <h1 id="heroTitleText" class="text-4xl md:text-6xl font-black uppercase tracking-tighter text-white drop-shadow-lg leading-none">Loading Title...</h1>
+                <h1 id="heroTitleText" class="text-4xl md:text-6xl font-black uppercase tracking-tighter text-white drop-shadow-lg leading-none"></h1>
                 <img id="heroTitleLogo" class="hidden h-auto w-auto object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" src="" alt="" />
             </div>
             
             <!-- Metadata details row -->
             <div id="heroMeta" class="flex flex-wrap items-center gap-3 text-xs md:text-sm text-gray-300 font-medium">
-                <span class="text-red-500 font-bold flex items-center gap-1">★ <span id="movieRating">0.0</span></span>
+                <span class="text-red-500 font-bold flex items-center gap-1">★ <span id="movieRating"></span></span>
                 <span class="opacity-40">•</span>
-                <span id="movieYear">0000</span>
+                <span id="movieYear"></span>
                 <span class="opacity-40">•</span>
-                <span id="movieRuntime">0m</span>
+                <span id="movieRuntime"></span>
                 <span class="opacity-40">•</span>
-                <span id="movieGenres">Genres</span>
+                <span id="movieGenres"></span>
             </div>
 
             <!-- Plot overview description -->
             <p id="heroOverview" class="text-zinc-300 text-sm md:text-base leading-relaxed max-w-2xl mt-4 line-clamp-3">
-                Fetching latest content plot overview...
             </p>
 
             <!-- Pill options buttons row -->
@@ -325,14 +324,16 @@
                     },
                     onStateChange: (event) => {
                         if (event.data === YT.PlayerState.PLAYING) {
-                            // Video is confirmed playing - crossfade: fade IN video, fade OUT static image
-                            const container = document.getElementById('trailerPlayerContainer');
-                            const staticImg = document.getElementById('backdropStatic');
-                            if (container) container.classList.add('is-playing');
-                            if (staticImg) staticImg.style.opacity = '0';
-                            document.getElementById('trailerVolumeBtn').classList.remove('hidden');
-                            // Activate idle-mode: mouse stops moving → UI collapses to show trailer
-                            if (!trailerIsPlaying) enableHeroFocusMode();
+                            // Wait 2.8s for YouTube overlays & controls to auto-hide before revealing the video
+                            setTimeout(() => {
+                                const container = document.getElementById('trailerPlayerContainer');
+                                const staticImg = document.getElementById('backdropStatic');
+                                if (container) container.classList.add('is-playing');
+                                if (staticImg) staticImg.style.opacity = '0';
+                                document.getElementById('trailerVolumeBtn').classList.remove('hidden');
+                                // Activate idle-mode: mouse stops moving → UI collapses to show trailer
+                                if (!trailerIsPlaying) enableHeroFocusMode();
+                            }, 2800);
                         }
                         if (event.data === YT.PlayerState.PAUSED) {
                             event.target.playVideo();
@@ -603,9 +604,11 @@
                         if (validSeasons.length > 0) {
                             fetchEpisodes(validSeasons[0].season_number);
                         }
-                    }
-                    
                     document.getElementById('movieRating').innerText = data.vote_average ? data.vote_average.toFixed(1) : "0.0";
+                    
+                    // Fade in the hero content block now that everything is populated
+                    const heroContent = document.getElementById('heroContent');
+                    if (heroContent) heroContent.classList.remove('opacity-0');
                 }
 
                 // Fetch Cast credits
