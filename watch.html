@@ -17,18 +17,35 @@
         .scrollbar-hide::-webkit-scrollbar {
             display: none;
         }
-        /* Custom styles to force high-quality YouTube background trailer & crop player UI */
+        /* Wrapper to clip video to container, no overflow */
+        #trailerPlayerContainer {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+        }
+        /* Force the generated iframe by YT API to fill and center-scale */
+        #trailerPlayerContainer iframe,
+        #trailerPlayerInner iframe,
+        #trailerPlayer iframe {
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            width: 100vw !important;
+            height: 56.25vw !important; /* 16:9 */
+            min-height: 100vh !important;
+            min-width: 177.78vh !important; /* 16:9 */
+            transform: translate(-50%, -50%) !important;
+            pointer-events: none !important;
+            border: none !important;
+        }
+        /* Wrapper div inserted by YT API - make it fill container */
         #trailerPlayer {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 100vw;
-            height: 56.25vw; /* 16:9 Aspect Ratio */
-            min-height: 100vh;
-            min-width: 177.78vh; /* 16:9 Aspect Ratio */
-            transform: translate(-50%, -50%) scale(1.6);
+            inset: 0;
+            width: 100%;
+            height: 100%;
             pointer-events: none;
-            transition: opacity 0.5s ease;
+            z-index: 1;
         }
     </style>
     <!-- AD TAGS PLACEHOLDER (Paste Adsterra tags here to monetize the player page) -->
@@ -49,7 +66,11 @@
     <section id="heroSection" class="relative h-[85vh] md:h-[90vh] w-full overflow-hidden bg-cover bg-center flex items-end">
         <!-- Ambient Backdrop Trailer or Image container -->
         <div id="ambientBackdrop" class="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0 bg-cover bg-center opacity-85">
-            <div id="trailerPlayerContainer" class="w-full h-full absolute inset-0"></div>
+            <div id="trailerPlayerContainer" class="w-full h-full absolute inset-0">
+                <!-- Transparent interaction blocker: sits ABOVE the youtube iframe, absorbs all pointer/touch events -->
+                <!-- so YouTube's player UI never detects interaction and never shows play/pause controls -->
+                <div id="ytBlocker" style="position:absolute;inset:0;z-index:2;width:100%;height:100%;"></div>
+            </div>
         </div>
         <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent z-10"></div>
         <div class="absolute inset-0 bg-gradient-to-r from-zinc-950/40 via-transparent to-transparent z-10"></div>
@@ -293,8 +314,13 @@
                 if (trailer) {
                     const playerContainer = document.getElementById('trailerPlayerContainer');
                     if (playerContainer) {
-                        // Create placeholder div that YouTube API replaces
-                        playerContainer.innerHTML = `<div id="trailerPlayer" class="pointer-events-none"></div>`;
+                        // Insert the YT player placeholder BEFORE the blocker div
+                        // so the blocker div stays on top and absorbs all touch events
+                        const playerDiv = document.createElement('div');
+                        playerDiv.id = 'trailerPlayer';
+                        playerDiv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;';
+                        const blocker = document.getElementById('ytBlocker');
+                        playerContainer.insertBefore(playerDiv, blocker);
                         
                         if (ytApiReady) {
                             setupTrailerPlayer(trailer.key);
