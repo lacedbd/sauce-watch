@@ -45,7 +45,7 @@
             transition: opacity 1.5s ease, visibility 0s linear 0s;
         }
         /* Force the generated iframe by YT API to fill and center-crop + scale up to eliminate letterboxing */
-        #trailerPlayerContainer iframe {
+        #trailer-wrapper iframe {
             position: absolute !important;
             top: 50% !important;
             left: 50% !important;
@@ -53,8 +53,8 @@
             height: 56.25vw !important;
             min-height: 100vh !important;
             min-width: 177.78vh !important;
-            /* scale(1.5) aggressively crops ~25% off each edge to completely hide the YouTube title bar and controls */
-            transform: translate(-50%, -50%) scale(1.5) !important;
+            /* Using CSS transform to enforce 16:9 while using the user's massive wrapper */
+            transform: translate(-50%, -50%) !important;
             pointer-events: none !important;
             border: none !important;
         }
@@ -127,10 +127,12 @@
 
     <!-- Details Hero Section (Immersive Background) -->
     <section id="heroSection" class="relative h-[85vh] md:h-[90vh] w-full overflow-hidden bg-zinc-950 flex items-end">
-        <!-- Layer 1 (bottom): YouTube video - hidden until confirmed playing -->
+        <!-- The Cinematic Background Wrapper -->
         <div id="ambientBackdrop" class="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
-            <div id="trailerPlayerContainer" class="w-full h-full absolute inset-0">
-                <!-- YT Player div injected here by JS -->
+            <!-- Scaled container to push UI out of bounds. Hidden initially. -->
+            <div id="trailer-wrapper" class="absolute top-1/2 left-1/2 w-[200vw] h-[200vh] md:w-[150vw] md:h-[150vh] -translate-x-1/2 -translate-y-1/2 z-0 opacity-0 transition-opacity duration-1000">
+                <!-- The API will inject the iframe right here -->
+                <div id="youtube-player" class="w-full h-full pointer-events-none"></div>
             </div>
         </div>
 
@@ -299,7 +301,7 @@
         };
 
         function setupTrailerPlayer(videoKey) {
-            trailerPlayer = new YT.Player('trailerPlayer', {
+            trailerPlayer = new YT.Player('youtube-player', {
                 width: '1920',
                 height: '1080',
                 videoId: videoKey,
@@ -325,40 +327,28 @@
                         event.target.playVideo();
                     },
                     onStateChange: (event) => {
-                        const container = document.getElementById('trailerPlayerContainer');
+                        const wrapper = document.getElementById('trailer-wrapper');
                         const staticImg = document.getElementById('backdropStatic');
                         
                         if (event.data === YT.PlayerState.PLAYING) {
                             event.target.setPlaybackQuality('hd1080'); // Force high quality
                             
-                            if (!container.dataset.hasPlayed) {
-                                container.dataset.hasPlayed = "true";
-                                // Wait 2.8s for YouTube overlays & controls to auto-hide before revealing the video
-                                setTimeout(() => {
-                                    if (container) {
-                                        container.style.transition = '';
-                                        container.classList.add('is-playing');
-                                    }
-                                    if (staticImg) staticImg.style.opacity = '0';
-                                    document.getElementById('trailerVolumeBtn').classList.remove('hidden');
-                                    // Activate idle-mode: mouse stops moving → UI collapses to show trailer
-                                    if (!trailerIsPlaying) enableHeroFocusMode();
-                                }, 2800);
-                            } else {
-                                // Resuming from background tab pause
-                                if (container) {
-                                    container.style.transition = '';
-                                    container.style.opacity = '';
-                                    container.classList.add('is-playing');
-                                }
+                            // THE MAGIC TRICK: Only reveal the video once it is actually playing
+                            if (wrapper) {
+                                wrapper.style.transition = '';
+                                wrapper.classList.remove('opacity-0');
                             }
+                            if (staticImg) staticImg.style.opacity = '0';
+                            document.getElementById('trailerVolumeBtn').classList.remove('hidden');
+                            
+                            // Activate idle-mode: mouse stops moving → UI collapses to show trailer
+                            if (!trailerIsPlaying) enableHeroFocusMode();
                         }
                         if (event.data === YT.PlayerState.PAUSED) {
-                            // Immediately hide container to prevent showing the big center pause icon when tab loses focus
-                            if (container) {
-                                container.style.transition = 'none';
-                                container.style.opacity = '0';
-                                container.classList.remove('is-playing');
+                            // Immediately hide wrapper to prevent showing the big center pause icon when tab loses focus
+                            if (wrapper) {
+                                wrapper.style.transition = 'none';
+                                wrapper.classList.add('opacity-0');
                             }
                             event.target.playVideo();
                         }
@@ -413,12 +403,9 @@
                 if (!trailer) return;
 
                 function doInjectPlayer() {
-                    const playerContainer = document.getElementById('trailerPlayerContainer');
-                    if (!playerContainer || document.getElementById('trailerPlayer')) return;
-                    const playerDiv = document.createElement('div');
-                    playerDiv.id = 'trailerPlayer';
-                    playerDiv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;';
-                    playerContainer.appendChild(playerDiv);
+                    const playerContainer = document.getElementById('trailer-wrapper');
+                    if (!playerContainer || document.getElementById('youtube-player').tagName === 'IFRAME') return;
+                    // The #youtube-player div is already in the HTML from the wrapper
                     if (ytApiReady) {
                         setupTrailerPlayer(trailer.key);
                     } else {
