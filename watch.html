@@ -12,10 +12,23 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .hero-gradient {
-            background: linear-gradient(to top, rgba(9, 9, 11, 1) 0%, rgba(9, 9, 11, 0.4) 60%, rgba(9, 9, 11, 0) 100%);
+            background: linear-gradient(to top, rgba(9, 9, 11, 1) 0%, rgba(9, 9, 11, 0) 100%);
         }
         .scrollbar-hide::-webkit-scrollbar {
             display: none;
+        }
+        /* Custom styles to force high-quality YouTube background trailer & crop player UI */
+        #trailerPlayer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100vw;
+            height: 56.25vw; /* 16:9 Aspect Ratio */
+            min-height: 100vh;
+            min-width: 177.78vh; /* 16:9 Aspect Ratio */
+            transform: translate(-50%, -50%) scale(1.6);
+            pointer-events: none;
+            transition: opacity 0.5s ease;
         }
     </style>
     <!-- AD TAGS PLACEHOLDER (Paste Adsterra tags here to monetize the player page) -->
@@ -35,11 +48,11 @@
     <!-- Details Hero Section (Immersive Background) -->
     <section id="heroSection" class="relative h-[85vh] md:h-[90vh] w-full overflow-hidden bg-cover bg-center flex items-end">
         <!-- Ambient Backdrop Trailer or Image container -->
-        <div id="ambientBackdrop" class="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0 bg-cover bg-center opacity-40">
+        <div id="ambientBackdrop" class="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0 bg-cover bg-center opacity-85">
             <div id="trailerPlayerContainer" class="w-full h-full absolute inset-0"></div>
         </div>
-        <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/50 to-transparent z-10"></div>
-        <div class="absolute inset-0 bg-gradient-to-r from-zinc-950/60 via-transparent to-transparent z-10"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent z-10"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-zinc-950/40 via-transparent to-transparent z-10"></div>
 
         <!-- Overlaid text & options details -->
         <div class="relative z-20 max-w-4xl px-6 md:px-12 pb-16 space-y-4">
@@ -227,7 +240,7 @@
                     const playerContainer = document.getElementById('trailerPlayerContainer');
                     if (playerContainer) {
                         playerContainer.innerHTML = `
-                            <iframe id="trailerPlayer" class="w-full h-full absolute inset-0 object-cover scale-[1.35] pointer-events-none" 
+                            <iframe id="trailerPlayer" class="pointer-events-none" 
                                     src="https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&loop=1&playlist=${trailer.key}&controls=0&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&enablejsapi=1" 
                                     frameborder="0" allow="autoplay; encrypted-media">
                             </iframe>
@@ -249,10 +262,10 @@
             const volumeIcon = document.getElementById('volumeIcon');
             
             if (isMuted) {
-                iframe.contentWindow.postMessage('{"event":"command","func":"mute","args":""}', '*');
+                iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'mute' }), '*');
                 volumeIcon.className = "fas fa-volume-mute";
             } else {
-                iframe.contentWindow.postMessage('{"event":"command","func":"unmute","args":""}', '*');
+                iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unMute' }), '*');
                 volumeIcon.className = "fas fa-volume-up text-red-500";
             }
         });
