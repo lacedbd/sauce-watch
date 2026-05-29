@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Watching - sauce.watch</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .hero-gradient {
+            background: linear-gradient(to top, rgba(9, 9, 11, 1) 0%, rgba(9, 9, 11, 0.4) 60%, rgba(9, 9, 11, 0) 100%);
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+    <!-- AD TAGS PLACEHOLDER (Paste Adsterra tags here to monetize the player page) -->
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col font-sans antialiased overflow-x-hidden select-none">
+
+    <!-- Back Button (Absolute Top Left) -->
+    <a href="index.html" class="absolute top-8 left-8 z-[110] bg-black/60 hover:bg-black/80 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 text-white transition-all shadow-lg">
+        <i class="fas fa-chevron-left text-sm"></i>
+    </a>
+
+    <!-- Floating Audio Toggle Button (Absolute Top Right) -->
+    <button id="trailerVolumeBtn" class="hidden absolute top-8 right-8 z-[110] bg-black/60 hover:bg-black/80 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 text-white transition-all shadow-lg">
+        <i id="volumeIcon" class="fas fa-volume-mute text-sm"></i>
+    </button>
+
+    <!-- Details Hero Section (Immersive Background) -->
+    <section id="heroSection" class="relative h-[85vh] md:h-[90vh] w-full overflow-hidden bg-cover bg-center flex items-end">
+        <!-- Ambient Backdrop Trailer or Image container -->
+        <div id="ambientBackdrop" class="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0 bg-cover bg-center opacity-40">
+            <div id="trailerPlayerContainer" class="w-full h-full absolute inset-0"></div>
+        </div>
+        <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/50 to-transparent z-10"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-zinc-950/60 via-transparent to-transparent z-10"></div>
+
+        <!-- Overlaid text & options details -->
+        <div class="relative z-20 max-w-4xl px-6 md:px-12 pb-16 space-y-4">
+            <h1 id="movieTitle" class="text-5xl md:text-8xl font-black uppercase tracking-tighter text-white drop-shadow-lg leading-none">Loading Title...</h1>
+            
+            <!-- Metadata details row -->
+            <div class="flex flex-wrap items-center gap-3 text-xs md:text-sm text-gray-300 font-medium">
+                <span class="text-red-500 font-bold flex items-center gap-1">★ <span id="movieRating">0.0</span></span>
+                <span class="opacity-40">•</span>
+                <span id="movieYear">0000</span>
+                <span class="opacity-40">•</span>
+                <span id="movieRuntime">0m</span>
+                <span class="opacity-40">•</span>
+                <span id="movieGenres">Genres</span>
+            </div>
+
+            <!-- Plot overview description -->
+            <p id="movieOverview" class="text-zinc-300 text-sm md:text-base leading-relaxed max-w-2xl mt-4 line-clamp-3">
+                Fetching latest content plot overview...
+            </p>
+
+            <!-- Pill options buttons row -->
+            <div class="flex items-center gap-3 pt-6 flex-wrap">
+                <button id="mainPlayBtn" class="bg-white hover:bg-zinc-200 text-black px-8 py-3 rounded-full font-bold flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95 shadow-xl">
+                    <i class="fas fa-play"></i> Play
+                </button>
+                <button class="w-11 h-11 rounded-full border border-white/20 hover:bg-white/10 flex items-center justify-center text-white transition-all text-sm" title="Add to Library">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button id="jumpToEpisodesBtn" class="hidden bg-white/10 hover:bg-white/20 border border-white/10 text-white px-6 py-3 rounded-full font-bold flex items-center gap-2 transition-all text-sm shadow">
+                    <i class="fas fa-list-ol"></i> Episodes
+                </button>
+                <button id="jumpToSimilarBtn" class="bg-white/10 hover:bg-white/20 border border-white/10 text-white px-6 py-3 rounded-full font-bold flex items-center gap-2 transition-all text-sm shadow">
+                    <i class="fas fa-thumbs-up"></i> Similars
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content Area -->
+    <main class="relative z-10 px-6 md:px-12 py-8 space-y-12 max-w-[1440px] mx-auto w-full">
+        
+        <!-- TV Episodes Selector Container (Shown only for TV Shows) -->
+        <div id="tvSelectorContainer" class="hidden bg-white/5 border border-white/10 rounded-2xl p-6 space-y-6">
+            <div class="flex items-center justify-between border-b border-white/5 pb-4 flex-wrap gap-3">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-list-ol text-blue-500"></i> Episodes
+                </h3>
+                <select id="seasonSelect" class="bg-zinc-900 border border-zinc-800 text-sm text-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-zinc-700 transition">
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+            <!-- Episode Button Grid -->
+            <div id="episodeGrid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 max-h-[250px] overflow-y-auto scrollbar-hide pr-1">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+
+        <!-- Actors / Cast members Section -->
+        <section id="castSection" class="space-y-6 hidden">
+            <div class="flex items-center gap-2 border-l-2 border-red-600 pl-3">
+                <h2 class="text-2xl font-bold text-white">Actors</h2>
+            </div>
+            <div id="castCarousel" class="flex gap-4 overflow-x-auto scrollbar-hide pb-4">
+                <!-- Injected dynamically -->
+            </div>
+        </section>
+
+        <!-- Recommendations Section -->
+        <section id="recommendationsSection" class="space-y-6 hidden">
+            <div class="flex items-center gap-2 border-l-2 border-green-600 pl-3">
+                <h2 class="text-2xl font-bold text-white">People also like</h2>
+            </div>
+            <div id="recommendationsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+                <!-- Injected dynamically -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Streaming Modal Player Overlay (Cinema Mode) -->
+    <div id="playerModal" class="hidden fixed inset-0 z-[200] bg-zinc-950/95 backdrop-blur-md flex flex-col justify-center items-center p-4">
+        <!-- Close button -->
+        <button id="closePlayerBtn" class="absolute top-6 right-6 text-white hover:text-red-500 transition-colors text-2xl">
+            <i class="fas fa-times"></i>
+        </button>
+
+        <div class="w-full max-w-5xl space-y-6">
+            <!-- Video Frame Container -->
+            <div class="relative w-full aspect-video rounded-2xl overflow-hidden bg-black border border-white/10 shadow-2xl">
+                <iframe id="videoPlayer" 
+                        src="" 
+                        class="absolute inset-0 w-full h-full" 
+                        allowfullscreen 
+                        scrolling="no" 
+                        frameborder="0" 
+                        sandbox="allow-scripts allow-same-origin allow-forms"
+                        allow="autoplay; encrypted-media; picture-in-picture">
+                </iframe>
+            </div>
+
+            <!-- Server Switcher Row -->
+            <div class="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 flex-wrap gap-4">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-server text-red-500 text-sm"></i>
+                    <span class="text-sm font-bold text-gray-200">Streaming Server:</span>
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="switchServer('vidsrc')" class="server-btn px-4 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold transition-all shadow-md">Server 1 (VidSrc)</button>
+                    <button onclick="switchServer('vidlink')" class="server-btn px-4 py-1.5 bg-white/5 text-gray-300 hover:bg-white/10 rounded-lg text-xs font-bold transition-all border border-white/5">Server 2 (VidLink - Clean)</button>
+                    <button onclick="switchServer('embedsu')" class="server-btn px-4 py-1.5 bg-white/5 text-gray-300 hover:bg-white/10 rounded-lg text-xs font-bold transition-all border border-white/5">Server 3 (Embed.su)</button>
+                    <button onclick="switchServer('vidsrcxyz')" class="server-btn px-4 py-1.5 bg-white/5 text-gray-300 hover:bg-white/10 rounded-lg text-xs font-bold transition-all border border-white/5">Server 4 (VidSrc.xyz)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-black py-12 px-4 md:px-12 border-t border-white/10 mt-12 relative z-30">
+        <div class="mx-auto max-w-[1440px] text-center text-xs text-gray-500">
+            <p class="mb-4">sauce.watch is a free streaming catalog guide aggregator. This site does not store any files on our server, we only link to media hosted on 3rd party services.</p>
+            <p class="mt-2">sauce.watch © 2026. All Rights Reserved</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Player Engine -->
+    <script>
+        const TMDB_API_KEY = "607bf14c16a8ab16f9ed61e6ba5920a7";
+        const TMDB_BASE = "https://api.themoviedb.org/3";
+        const POSTER_BASE = "https://image.tmdb.org/t/p/w500";
+        const BACKDROP_BASE = "https://image.tmdb.org/t/p/original";
+        
+        let currentMovieId = '';
+        let currentType = 'movie';
+        let activeSeasonNum = 1;
+        let activeEpisodeNum = 1;
+        let currentServer = 'vidsrc';
+        let isMuted = true;
+
+        // Switch stream server inside the modal player
+        function switchServer(serverKey) {
+            const playerIframe = document.getElementById('videoPlayer');
+            let src = '';
+            
+            const epPath = currentType === 'tv' ? `/${activeSeasonNum}/${activeEpisodeNum}` : '';
+
+            if (serverKey === 'vidsrc') {
+                src = currentType === 'tv' 
+                    ? `https://vidsrc.to/embed/tv/${currentMovieId}${epPath}` 
+                    : `https://vidsrc.to/embed/movie/${currentMovieId}`;
+            } else if (serverKey === 'vidlink') {
+                src = `https://vidlink.pro/embed/${currentType}/${currentMovieId}${currentType === 'tv' ? `/season/${activeSeasonNum}/episode/${activeEpisodeNum}` : ''}`;
+            } else if (serverKey === 'embedsu') {
+                src = `https://embed.su/embed/${currentType}/${currentMovieId}${currentType === 'tv' ? `/${activeSeasonNum}/${activeEpisodeNum}` : ''}`;
+            } else if (serverKey === 'vidsrcxyz') {
+                src = `https://vidsrc.xyz/embed/${currentType}/${currentMovieId}${currentType === 'tv' ? `/${activeSeasonNum}/${activeEpisodeNum}` : ''}`;
+            }
+            
+            playerIframe.src = src;
+            currentServer = serverKey;
+
+            // Highlight buttons
+            const buttons = document.querySelectorAll('.server-btn');
+            buttons.forEach(btn => {
+                if (btn.innerText.toLowerCase().includes(serverKey) || 
+                    (serverKey === 'vidsrc' && btn.innerText.includes('VidSrc') && !btn.innerText.includes('.xyz'))) {
+                    btn.className = "server-btn px-4 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold transition-all shadow-md";
+                } else {
+                    btn.className = "server-btn px-4 py-1.5 bg-white/5 text-gray-300 hover:bg-white/10 rounded-lg text-xs font-bold transition-all border border-white/5";
+                }
+            });
+        }
+
+        // Fetch trailers/videos from TMDB API and play them in background
+        async function fetchAndSetupTrailerBackground() {
+            try {
+                const res = await fetch(`${TMDB_BASE}/${currentType}/${currentMovieId}/videos?api_key=${TMDB_API_KEY}`);
+                const data = await res.json();
+                
+                const videos = data.results || [];
+                const trailer = videos.find(v => v.site === 'YouTube' && v.type === 'Trailer') ||
+                                videos.find(v => v.site === 'YouTube' && v.type === 'Teaser') ||
+                                videos.find(v => v.site === 'YouTube');
+                                
+                if (trailer) {
+                    const playerContainer = document.getElementById('trailerPlayerContainer');
+                    if (playerContainer) {
+                        playerContainer.innerHTML = `
+                            <iframe id="trailerPlayer" class="w-full h-full absolute inset-0 object-cover scale-[1.35] pointer-events-none" 
+                                    src="https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&loop=1&playlist=${trailer.key}&controls=0&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&enablejsapi=1" 
+                                    frameborder="0" allow="autoplay; encrypted-media">
+                            </iframe>
+                        `;
+                        document.getElementById('trailerVolumeBtn').classList.remove('hidden');
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to load background trailer video:", err);
+            }
+        }
+
+        // Toggle volume for YouTube trailer background
+        document.getElementById('trailerVolumeBtn').addEventListener('click', () => {
+            const iframe = document.getElementById('trailerPlayer');
+            if (!iframe) return;
+            
+            isMuted = !isMuted;
+            const volumeIcon = document.getElementById('volumeIcon');
+            
+            if (isMuted) {
+                iframe.contentWindow.postMessage('{"event":"command","func":"mute","args":""}', '*');
+                volumeIcon.className = "fas fa-volume-mute";
+            } else {
+                iframe.contentWindow.postMessage('{"event":"command","func":"unmute","args":""}', '*');
+                volumeIcon.className = "fas fa-volume-up text-red-500";
+            }
+        });
+
+        // Open Cinema modal player
+        function openPlayerModal() {
+            // If background trailer trailer is active and unmuted, mute it first
+            const iframe = document.getElementById('trailerPlayer');
+            if (iframe && !isMuted) {
+                isMuted = true;
+                iframe.contentWindow.postMessage('{"event":"command","func":"mute","args":""}', '*');
+                document.getElementById('volumeIcon').className = "fas fa-volume-mute";
+            }
+            
+            switchServer(currentServer);
+            document.getElementById('playerModal').classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        // Close Cinema modal player
+        document.getElementById('closePlayerBtn').addEventListener('click', () => {
+            document.getElementById('videoPlayer').src = '';
+            document.getElementById('playerModal').classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        });
+
+        // Populate TV Seasons and Episodes Lists
+        async function fetchEpisodes(seasonNum) {
+            const grid = document.getElementById('episodeGrid');
+            grid.innerHTML = '<p class="text-zinc-500 text-xs">Loading episodes...</p>';
+            try {
+                const res = await fetch(`${TMDB_BASE}/tv/${currentMovieId}/season/${seasonNum}?api_key=${TMDB_API_KEY}`);
+                const data = await res.json();
+                grid.innerHTML = '';
+                
+                (data.episodes || []).forEach(ep => {
+                    const btn = document.createElement('button');
+                    btn.className = `episode-btn p-3 rounded-xl border text-sm font-bold text-left transition-all bg-white/5 border-white/5 text-gray-300 hover:border-white/10 hover:bg-white/10`;
+                    btn.innerHTML = `
+                        <div class="text-[9px] opacity-60">EPISODE ${ep.episode_number}</div>
+                        <div class="truncate text-xs mt-0.5">${ep.name}</div>
+                    `;
+                    btn.addEventListener('click', () => {
+                        activeSeasonNum = parseInt(seasonNum);
+                        activeEpisodeNum = ep.episode_number;
+
+                        // Highlight selected episode button
+                        document.querySelectorAll('.episode-btn').forEach(b => {
+                            b.className = "episode-btn p-3 rounded-xl border border-white/5 text-sm font-bold text-left transition-all bg-white/5 text-gray-300 hover:border-white/10 hover:bg-white/10";
+                        });
+                        btn.className = "episode-btn p-3 rounded-xl border border-red-500 text-sm font-bold text-left transition-all bg-red-600 text-white shadow-md";
+
+                        openPlayerModal();
+                    });
+                    grid.appendChild(btn);
+                });
+            } catch (err) {
+                console.error("Episodes load broken:", err);
+                grid.innerHTML = '<p class="text-red-500 text-xs">Failed to load episodes.</p>';
+            }
+        }
+
+        // Initialize and Setup Page Layout
+        async function loadPlayerEngine() {
+            const urlParams = new URLSearchParams(window.location.search);
+            currentMovieId = urlParams.get('id');
+            currentType = urlParams.get('type') || 'movie';
+
+            if (!currentMovieId) {
+                alert("No Movie/Show ID specified. Returning to catalog.");
+                window.location.href = "index.html";
+                return;
+            }
+
+            // TV Specific layout setups
+            if (currentType === 'tv') {
+                document.getElementById('tvSelectorContainer').classList.remove('hidden');
+                document.getElementById('jumpToEpisodesBtn').classList.remove('hidden');
+                
+                // Link "Episodes" jump button
+                document.getElementById('jumpToEpisodesBtn').addEventListener('click', () => {
+                    document.getElementById('tvSelectorContainer').scrollIntoView({ behavior: 'smooth' });
+                });
+            }
+
+            // Link "Similars" jump button
+            document.getElementById('jumpToSimilarBtn').addEventListener('click', () => {
+                document.getElementById('recommendationsSection').scrollIntoView({ behavior: 'smooth' });
+            });
+
+            // Set main Play button listener
+            document.getElementById('mainPlayBtn').addEventListener('click', () => {
+                if (currentType === 'tv') {
+                    // TV shows: scroll to episode list or play first episode
+                    document.getElementById('tvSelectorContainer').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    openPlayerModal();
+                }
+            });
+
+            // Set background trailer
+            fetchAndSetupTrailerBackground();
+
+            try {
+                // Fetch Main metadata details
+                const res = await fetch(`${TMDB_BASE}/${currentType}/${currentMovieId}?api_key=${TMDB_API_KEY}`);
+                const data = await res.json();
+
+                if (data) {
+                    const title = data.title || data.name;
+                    const releaseDate = data.release_date || data.first_air_date || "";
+                    const year = releaseDate ? releaseDate.split('-')[0] : "N/A";
+                    const runtime = data.runtime ? `${data.runtime}m` : (data.episode_run_time ? `${data.episode_run_time[0]}m` : "N/A");
+                    const genresList = (data.genres || []).map(g => g.name).join(", ");
+                    
+                    document.title = `Watching ${title} - sauce.watch`;
+                    document.getElementById('movieTitle').innerText = title;
+                    document.getElementById('movieOverview').innerText = data.overview || "No description found.";
+                    document.getElementById('movieYear').innerText = year;
+                    document.getElementById('movieRuntime').innerText = runtime;
+                    document.getElementById('movieGenres').innerText = genresList || "N/A";
+                    
+                    if (data.backdrop_path) {
+                        document.getElementById('ambientBackdrop').style.backgroundImage = `url('${BACKDROP_BASE}${data.backdrop_path}')`;
+                    }
+
+                    // TV Specific: Populate seasons options
+                    if (currentType === 'tv' && data.seasons) {
+                        const select = document.getElementById('seasonSelect');
+                        select.innerHTML = '';
+                        const validSeasons = data.seasons.filter(s => s.season_number > 0);
+                        validSeasons.forEach(s => {
+                            const opt = document.createElement('option');
+                            opt.value = s.season_number;
+                            opt.textContent = `Season ${s.season_number}`;
+                            select.appendChild(opt);
+                        });
+
+                        select.addEventListener('change', (e) => {
+                            fetchEpisodes(e.target.value);
+                        });
+
+                        if (validSeasons.length > 0) {
+                            fetchEpisodes(validSeasons[0].season_number);
+                        }
+                    }
+                    
+                    document.getElementById('movieRating').innerText = data.vote_average ? data.vote_average.toFixed(1) : "0.0";
+                }
+
+                // Fetch Cast credits
+                fetchCredits();
+
+                // Fetch recommendations
+                fetchRecommendations();
+
+            } catch (err) {
+                console.error("Details API pipeline failed:", err);
+            }
+        }
+
+        // Fetch Actors and Profiles
+        async function fetchCredits() {
+            try {
+                const res = await fetch(`${TMDB_BASE}/${currentType}/${currentMovieId}/credits?api_key=${TMDB_API_KEY}`);
+                const data = await res.json();
+                const carousel = document.getElementById('castCarousel');
+                carousel.innerHTML = '';
+                
+                const cast = (data.cast || []).slice(0, 15);
+                if (cast.length > 0) {
+                    document.getElementById('castSection').classList.remove('hidden');
+                    cast.forEach(actor => {
+                        const card = document.createElement('div');
+                        card.className = "min-w-[120px] max-w-[120px] bg-white/5 border border-white/5 rounded-2xl overflow-hidden text-center p-3 hover:border-white/10 transition-all flex flex-col items-center shadow-lg";
+                        
+                        const profileUrl = actor.profile_path 
+                            ? `https://image.tmdb.org/t/p/w185${actor.profile_path}` 
+                            : `https://ui-avatars.com/api/?name=${encodeURIComponent(actor.name)}&background=27272a&color=fff&size=128`;
+
+                        card.innerHTML = `
+                            <img src="${profileUrl}" class="w-16 h-16 object-cover rounded-full border border-white/10 mb-2 shadow" alt="${actor.name}" />
+                            <h4 class="text-xs font-bold text-white truncate w-full">${actor.name}</h4>
+                            <p class="text-[10px] text-gray-400 truncate w-full mt-0.5">${actor.character || "Actor"}</p>
+                        `;
+                        carousel.appendChild(card);
+                    });
+                }
+            } catch (err) {
+                console.error("Cast fetch failed:", err);
+            }
+        }
+
+        // Fetch Recommendations Grid
+        async function fetchRecommendations() {
+            try {
+                const res = await fetch(`${TMDB_BASE}/${currentType}/${currentMovieId}/recommendations?api_key=${TMDB_API_KEY}`);
+                const data = await res.json();
+                const grid = document.getElementById('recommendationsGrid');
+                grid.innerHTML = '';
+
+                const items = (data.results || []).slice(0, 8);
+                if (items.length > 0) {
+                    document.getElementById('recommendationsSection').classList.remove('hidden');
+                    items.forEach(item => {
+                        if (!item.poster_path) return;
+                        
+                        const card = document.createElement('a');
+                        card.href = `watch.html?id=${item.id}&type=${currentType}`;
+                        card.className = "relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3] block";
+                        
+                        const rating = item.vote_average ? item.vote_average.toFixed(1) : "0.0";
+                        const title = item.title || item.name;
+
+                        card.innerHTML = `
+                            <img src="${POSTER_BASE}${item.poster_path}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                            <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400">
+                                <i class="fas fa-star text-[8px] mr-1"></i> ${rating}
+                            </div>
+                            <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
+                                <h5 class="font-bold text-sm text-white truncate drop-shadow-md">${title}</h5>
+                            </div>
+                        `;
+                        grid.appendChild(card);
+                    });
+                }
+            } catch (err) {
+                console.error("Recommendations fetch failed:", err);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', loadPlayerEngine);
+    </script>
+</body>
+</html>

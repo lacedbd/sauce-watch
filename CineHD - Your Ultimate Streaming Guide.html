@@ -1,0 +1,713 @@
+<!DOCTYPE html><html lang="en" class="dark"><head><script>(function() {
+  var H = 920;
+  var FULL_SCREEN_DIM_PROPS = { height: 1, 'min-height': 1, 'max-height': 1 };
+  var HERO_TOKEN_RE = /^hero(?:$|[-_].*|[A-Z].*)$/;
+
+  function isPureFullViewportHeight(val) {
+    return /^\s*100(\.0+)?(vh|dvh|svh|lvh)\s*(?:!important)?\s*$/i.test(val || '');
+  }
+
+  function hasHeroToken(raw) {
+    if (!raw) return false;
+    var tokens = String(raw).split(/\s+/);
+    for (var i = 0; i < tokens.length; i++) {
+      if (HERO_TOKEN_RE.test(tokens[i])) return true;
+    }
+    return false;
+  }
+
+  function isHeroSelector(selectorText) {
+    if (!selectorText) return false;
+    return /(^|[\s>+~,(])#hero(?=$|[-_]|[A-Z]|[^-_a-zA-Z0-9])/.test(selectorText) ||
+      /(^|[\s>+~,(])\.hero(?=$|[-_]|[A-Z]|[^-_a-zA-Z0-9])/.test(selectorText);
+  }
+
+  function isHeroElement(el) {
+    if (!el || !el.getAttribute) return false;
+    return hasHeroToken(el.getAttribute('id')) || hasHeroToken(el.getAttribute('class'));
+  }
+
+  function shouldSkipScreenUtility(prop, val, selectorText, forceReplace) {
+    var p = (prop || '').toLowerCase().trim();
+    if (!FULL_SCREEN_DIM_PROPS[p] || !isPureFullViewportHeight(val)) return false;
+    if (forceReplace) return false;
+    if (isHeroSelector(selectorText)) return false;
+    return true;
+  }
+
+  function vhToPx(s) {
+    return s.replace(/([0-9.]+)(dvh|svh|lvh|vh)/g, function(_, n) {
+      return (parseFloat(n) * H / 100) + 'px';
+    });
+  }
+
+  function syncVhCustomProp() {
+    try {
+      var h = window.innerHeight || document.documentElement.clientHeight || H;
+      document.documentElement.style.setProperty('--vh', (h / 100) + 'px');
+    } catch (e) {}
+  }
+
+  // Patch CSS values (not selectors) recursively through @layer/@media/@supports
+  function patchRules(rules) {
+    try {
+      for (var i = 0; i < rules.length; i++) {
+        var rule = rules[i];
+        if (rule.cssRules) patchRules(rule.cssRules);
+        if (!rule.style) continue;
+        for (var j = 0; j < rule.style.length; j++) {
+          var prop = rule.style[j];
+          var val = rule.style.getPropertyValue(prop);
+          if (val.indexOf('vh') === -1) continue;
+          if (shouldSkipScreenUtility(prop, val, rule.selectorText, false)) continue;
+          rule.style.setProperty(prop, vhToPx(val), rule.style.getPropertyPriority(prop));
+        }
+      }
+    } catch(e) {}
+  }
+  function patchSheet(sheet) {
+    try { patchRules(sheet.cssRules || []); } catch(e) {}
+  }
+
+  /** Vite/React prod builds use <link rel="stylesheet" href="assets/*.css"> — not <style>. */
+  function patchStylesheetsFromDocument() {
+    try {
+      var list = document.styleSheets;
+      for (var i = 0; i < list.length; i++) {
+        try {
+          var sheet = list[i];
+          if (sheet && sheet.cssRules) patchSheet(sheet);
+        } catch (e) {}
+      }
+    } catch (e) {}
+    try {
+      document.querySelectorAll('link[rel="stylesheet"]').forEach(function(link) {
+        function go() {
+          try {
+            if (link.sheet) patchSheet(link.sheet);
+          } catch (e) {}
+        }
+        if (link.sheet) go();
+        else link.addEventListener('load', go);
+      });
+    } catch (e) {}
+  }
+
+  try {
+    var _ins = CSSStyleSheet.prototype.insertRule;
+    CSSStyleSheet.prototype.insertRule = function(rule, index) {
+      var idx = _ins.call(this, rule, index);
+      try { if (this.cssRules && this.cssRules[idx]) patchRules([this.cssRules[idx]]); } catch(e) {}
+      return idx;
+    };
+  } catch(e) {}
+
+  try {
+    var _rs = CSSStyleSheet.prototype.replaceSync;
+    if (_rs) {
+      CSSStyleSheet.prototype.replaceSync = function(text) {
+        _rs.call(this, text);
+        patchSheet(this);
+      };
+    }
+  } catch(e) {}
+
+  try {
+    var _r = CSSStyleSheet.prototype.replace;
+    if (_r) {
+      CSSStyleSheet.prototype.replace = function(text) {
+        var self = this;
+        return _r.call(this, text).then(function(sheet) { patchSheet(sheet || self); return sheet || self; });
+      };
+    }
+  } catch(e) {}
+
+  // ─── DOM-LEVEL FALLBACK (Tailwind v3 / plain <style> textContent updates) ─
+  function fixInlineVh(el) {
+    var s = el.getAttribute && el.getAttribute('style');
+    if (!s || s.indexOf('vh') === -1) return;
+    var forceReplace = isHeroElement(el);
+    var parts = s.split(';');
+    var out = [];
+    for (var i = 0; i < parts.length; i++) {
+      var seg = parts[i];
+      if (!seg.trim()) continue;
+      var colon = seg.indexOf(':');
+      if (colon === -1) {
+        out.push(seg.trim());
+        continue;
+      }
+      var prop = seg.slice(0, colon).trim();
+      var val = seg.slice(colon + 1);
+      if (shouldSkipScreenUtility(prop, val, '', forceReplace)) out.push(prop + ':' + val);
+      else out.push(prop + ':' + vhToPx(val));
+    }
+    el.setAttribute('style', out.join('; '));
+  }
+
+  function watchStyleEl(el) {
+    if (!el || el.getAttribute('data-vh-fix') || el._vhWatched) return;
+    el._vhWatched = true;
+    if (el.sheet) patchSheet(el.sheet);
+    try {
+      new MutationObserver(function() { if (el.sheet) patchSheet(el.sheet); })
+        .observe(el, { childList: true, subtree: true, characterData: true });
+    } catch(e) {}
+  }
+
+  function applyFixes() {
+    syncVhCustomProp();
+    try {
+      new ResizeObserver(function() { syncVhCustomProp(); }).observe(document.documentElement);
+    } catch (e) {}
+    patchStylesheetsFromDocument();
+    document.querySelectorAll('[style]').forEach(fixInlineVh);
+    document.querySelectorAll('style').forEach(watchStyleEl);
+    try { (document.adoptedStyleSheets || []).forEach(patchSheet); } catch(e) {}
+    try {
+      new MutationObserver(function(muts) {
+        muts.forEach(function(m) {
+          m.addedNodes.forEach(function(node) {
+            if (node.nodeType !== 1) return;
+            if (node.tagName === 'STYLE') watchStyleEl(node);
+            if (node.tagName === 'LINK' && node.rel === 'stylesheet') {
+              var link = node;
+              var go = function() {
+                try { if (link.sheet) patchSheet(link.sheet); } catch(e) {}
+              };
+              if (link.sheet) go();
+              else link.addEventListener('load', go);
+            }
+            fixInlineVh(node);
+            if (node.querySelectorAll) node.querySelectorAll('[style]').forEach(fixInlineVh);
+          });
+        });
+      }).observe(document.documentElement, { childList: true, subtree: true });
+    } catch(e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyFixes);
+  else applyFixes();
+
+  window.addEventListener('load', function() {
+    syncVhCustomProp();
+    patchStylesheetsFromDocument();
+    document.querySelectorAll('style').forEach(watchStyleEl);
+    document.querySelectorAll('[style]').forEach(fixInlineVh);
+    try { (document.adoptedStyleSheets || []).forEach(patchSheet); } catch(e) {}
+  });
+})();</script><script>(function() {
+  function _uxpResizeCharts() {
+    if (window.Plotly) {
+      document.querySelectorAll('.plot-container.plotly').forEach(function(pc) {
+        var gd = pc.parentElement;
+        if (!gd) return;
+        var rect = gd.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
+        try { window.Plotly.relayout(gd, { width: Math.round(rect.width), height: Math.round(rect.height) }); } catch(e) {}
+      });
+    }
+    if (window.ApexCharts && window.Apex && window.Apex._chartInstances) {
+      window.Apex._chartInstances.forEach(function(inst) {
+        try { (inst.chart || inst).updateOptions({}, false, false); } catch(e) {}
+      });
+    }
+    if (window.Chart) {
+      try { Object.values(window.Chart.instances || {}).forEach(function(c) { c.resize(); }); } catch(e) {}
+    }
+  }
+
+  window.addEventListener('load', function() {
+    setTimeout(function() { _uxpResizeCharts(); setTimeout(_uxpResizeCharts, 500); }, 300);
+    try {
+      var _lastW = 0, _lastH = 0, _timer = 0;
+      new ResizeObserver(function() {
+        var w = document.documentElement.clientWidth;
+        var h = document.documentElement.clientHeight;
+        if (w === _lastW && h === _lastH) return;
+        _lastW = w; _lastH = h;
+        clearTimeout(_timer);
+        _timer = setTimeout(_uxpResizeCharts, 150);
+      }).observe(document.documentElement);
+    } catch(e) {}
+  });
+})();</script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CineHD - Your Ultimate Streaming Guide</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        border: "hsl(var(--border))",
+                        background: "hsl(var(--background))",
+                        foreground: "hsl(var(--foreground))",
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --background: 0 0% 0%;
+            --foreground: 0 0% 98%;
+            --border: 240 3.7% 15.9%;
+        }
+        body {
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+            font-family: 'Inter', sans-serif;
+        }
+        .hero-gradient {
+            background: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0) 100%);
+        }
+        .card-shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+
+    <!-- Header -->
+    <header class="fixed top-0 z-[100] w-full bg-black/20 backdrop-blur-sm">
+        <div class="mx-auto flex items-center justify-between max-w-[1440px] px-4 py-4 md:px-8">
+            <a href="#" class="flex items-center">
+                <img alt="logo" src="/logo.png" class="h-8 md:h-9">
+            </a>
+            <div class="flex items-center gap-6">
+                <button class="text-white hover:text-red-500 transition-colors"><i class="fas fa-search text-lg"></i></button>
+                <button class="text-white hover:text-red-500 transition-colors"><i class="fas fa-download text-lg"></i></button>
+                <button class="text-white hover:text-red-500 transition-colors"><i class="fas fa-sun text-lg"></i></button>
+                <button class="text-white hover:text-red-500 transition-colors"><i class="fas fa-bars text-lg"></i></button>
+                <button class="text-white hover:text-red-500 transition-colors"><i class="fas fa-user-circle text-xl"></i></button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative h-[1012px] w-full overflow-hidden">
+        <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F49bd9194-e565-4a04-9953-9971b8ed96c7.webp" alt="Spider-Noir" class="absolute inset-0 object-cover w-full h-full">
+        <div class="absolute inset-0 hero-gradient"></div>
+        
+        <div class="absolute bottom-[25%] left-0 w-full px-4 md:px-12">
+            <div class="max-w-xl">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F5de9e1e4-198e-4144-b5df-6ee4ce78f7cb.webp" alt="Spider-Noir Title" class="h-20 md:h-28 object-contain mb-4">
+                <div class="flex items-center gap-4 text-sm text-gray-300 mb-4">
+                    <span class="font-bold">TV</span>
+                    <span><i class="fas fa-star text-white mr-1"></i> 8.8</span>
+                    <span>2026</span>
+                </div>
+                <p class="text-lg text-gray-200 mb-8 leading-relaxed">
+                    Ben Reilly, an aging and down on his luck private investigator in 1930s New York, is forced to grapple with his past life as the city's one and only superhero.
+                </p>
+                <div class="flex gap-4">
+                    <button class="bg-white text-black px-8 py-3 rounded-md font-bold flex items-center gap-2 hover:bg-gray-200 transition-all scale-100 hover:scale-105">
+                        <i class="fas fa-play"></i> Play
+                    </button>
+                    <button class="bg-white/20 backdrop-blur-md border border-white/30 text-white px-8 py-3 rounded-md font-bold flex items-center gap-2 hover:bg-white/30 transition-all scale-100 hover:scale-105">
+                        <i class="fas fa-info-circle"></i> See More
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hero Thumbnails -->
+        <div class="absolute bottom-4 left-0 w-full px-4 md:px-12">
+            <div class="flex gap-4 overflow-x-auto scrollbar-hide pb-4">
+                <div class="min-w-[280px] h-40 rounded-xl overflow-hidden relative group cursor-pointer border border-white/10">
+                    <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F5d7b7fd4-ee3c-4e26-bdbc-46498e7293d0.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                    <div class="absolute inset-0 bg-black/40 p-4 flex flex-col justify-end">
+                        <h4 class="font-bold">Backrooms</h4>
+                        <p class="text-xs text-gray-300">Horror • Mystery</p>
+                    </div>
+                </div>
+                <div class="min-w-[280px] h-40 rounded-xl overflow-hidden relative group cursor-pointer border border-white/10">
+                    <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F7619ec6e-9744-44cd-89cb-063ffa0c4c9a.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                    <div class="absolute inset-0 bg-black/40 p-4 flex flex-col justify-end">
+                        <h4 class="font-bold">Obsession</h4>
+                        <p class="text-xs text-gray-300">Horror</p>
+                    </div>
+                </div>
+                <div class="min-w-[280px] h-40 rounded-xl overflow-hidden relative group cursor-pointer border border-white/10">
+                    <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F2684f3fe-3de4-42de-8a78-90534b913aba.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                    <div class="absolute inset-0 bg-black/40 p-4 flex flex-col justify-end">
+                        <h4 class="font-bold">Star City</h4>
+                        <p class="text-xs text-gray-300">Drama • Sci-Fi</p>
+                    </div>
+                </div>
+                <div class="min-w-[280px] h-40 rounded-xl overflow-hidden relative group cursor-pointer border border-white/10">
+                    <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F4745cdf1-6a0b-40b2-94f9-7f33a3731faf.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                    <div class="absolute inset-0 bg-black/40 p-4 flex flex-col justify-end">
+                        <h4 class="font-bold">The Boys</h4>
+                        <p class="text-xs text-gray-300">Action • Sci-Fi</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Providers Section -->
+    <section class="py-8 px-4 md:px-12 bg-black">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+                <h2 class="text-2xl font-bold">Providers</h2>
+                <span class="text-gray-600">|</span>
+                <a href="#" class="text-blue-500 text-sm font-medium hover:underline">View All</a>
+            </div>
+            <div class="flex gap-2">
+                <button class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"><i class="fas fa-chevron-left"></i></button>
+                <button class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+        <div class="flex gap-4 overflow-x-auto scrollbar-hide">
+            <div class="min-w-[100px] h-[100px] rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center p-4 hover:border-white/30 transition-all cursor-pointer">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F4ccfbb52-a408-4106-904d-faacc6362eb4.webp" alt="Netflix" class="w-full h-full object-contain rounded-full shadow-lg">
+            </div>
+            <div class="min-w-[100px] h-[100px] rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center p-4 hover:border-white/30 transition-all cursor-pointer">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F91b7d084-0f10-4f10-a1ec-f229f5c58979.webp" alt="Prime Video" class="w-full h-full object-contain rounded-full shadow-lg">
+            </div>
+            <div class="min-w-[100px] h-[100px] rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center p-4 hover:border-white/30 transition-all cursor-pointer">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F7fce8935-dd7f-437c-8bb7-1f76708bfd34.webp" alt="Apple TV" class="w-full h-full object-contain rounded-full shadow-lg">
+            </div>
+            <div class="min-w-[100px] h-[100px] rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center p-4 hover:border-white/30 transition-all cursor-pointer">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2Fadb64e68-be74-4641-9672-fc65c70dfbc1.webp" alt="Disney+" class="w-full h-full object-contain rounded-full shadow-lg">
+            </div>
+            <div class="min-w-[100px] h-[100px] rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center p-4 hover:border-white/30 transition-all cursor-pointer">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F76f86176-ffda-4a18-be2b-501693a8b862.webp" alt="Hulu" class="w-full h-full object-contain rounded-full shadow-lg">
+            </div>
+            <div class="min-w-[100px] h-[100px] rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center p-4 hover:border-white/30 transition-all cursor-pointer">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F24128676-0548-4337-83f1-b63fefe8556d.webp" alt="Fubo" class="w-full h-full object-contain rounded-full shadow-lg">
+            </div>
+            <div class="min-w-[100px] h-[100px] rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center p-4 hover:border-white/30 transition-all cursor-pointer">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F78578338-0582-4ad9-b953-b7367feeb3de.webp" alt="Crunchyroll" class="w-full h-full object-contain rounded-full shadow-lg">
+            </div>
+            <div class="min-w-[100px] h-[100px] rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center p-4 hover:border-white/30 transition-all cursor-pointer">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F40ab4572-ec66-445c-8d35-3a6a84353752.webp" alt="HBO" class="w-full h-full object-contain rounded-full shadow-lg">
+            </div>
+            <div class="min-w-[100px] h-[100px] rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center p-4 hover:border-white/30 transition-all cursor-pointer">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F07dc0b39-8bd4-455a-ac5c-cd7a03e2010e.webp" alt="MGM+" class="w-full h-full object-contain rounded-full shadow-lg">
+            </div>
+        </div>
+    </section>
+
+    <!-- Content Sections Helper Functionality -->
+    <section class="py-8 px-4 md:px-12 bg-black">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+                <h2 class="text-2xl font-bold">Now Playing</h2>
+                <span class="text-gray-600">|</span>
+                <a href="#" class="text-blue-500 text-sm font-medium hover:underline">View All</a>
+            </div>
+            <div class="flex gap-2">
+                <button class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"><i class="fas fa-chevron-left text-xs"></i></button>
+                <button class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"><i class="fas fa-chevron-right text-xs"></i></button>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+            <!-- Movie Poster Cards -->
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2Ff054b651-b0d3-4e57-b18e-c79c02e96083.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400">
+                    <i class="fas fa-star text-[8px] mr-1"></i> 8.1
+                </div>
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
+                    <h5 class="font-bold text-sm truncate">The Mummy</h5>
+                    <p class="text-[10px] text-gray-300">Horror • Action</p>
+                </div>
+            </div>
+            <!-- Repeated for other titles -->
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F34a63b00-b406-45e5-985f-26e6c8d8278f.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400">
+                    <i class="fas fa-star text-[8px] mr-1"></i> 8.3
+                </div>
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
+                    <h5 class="font-bold text-sm truncate">Jack Ryan</h5>
+                    <p class="text-[10px] text-gray-300">Action • Thriller</p>
+                </div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F62e68335-81e7-471e-9063-d859cb5a921a.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400">
+                    <i class="fas fa-star text-[8px] mr-1"></i> 6.8
+                </div>
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
+                    <h5 class="font-bold text-sm truncate">Mandalorian</h5>
+                    <p class="text-[10px] text-gray-300">Sci-Fi • Fantasy</p>
+                </div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F7619ec6e-9744-44cd-89cb-063ffa0c4c9a.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400">
+                    <i class="fas fa-star text-[8px] mr-1"></i> 7.9
+                </div>
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
+                    <h5 class="font-bold text-sm truncate">Obsession</h5>
+                    <p class="text-[10px] text-gray-300">Horror</p>
+                </div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2Fd727e448-ae49-4fbe-b18b-f5960855ca5d.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400">
+                    <i class="fas fa-star text-[8px] mr-1"></i> 8.0
+                </div>
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
+                    <h5 class="font-bold text-sm truncate">Mario Galaxy</h5>
+                    <p class="text-[10px] text-gray-300">Family • Adventure</p>
+                </div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F6d007706-f9bd-4774-8520-0f1986292406.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400">
+                    <i class="fas fa-star text-[8px] mr-1"></i> 9.3
+                </div>
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
+                    <h5 class="font-bold text-sm truncate">Swapped</h5>
+                    <p class="text-[10px] text-gray-300">Drama • Western</p>
+                </div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2Fb5cac4c6-eead-4ed7-be39-d787ea92cc3d.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400">
+                    <i class="fas fa-star text-[8px] mr-1"></i> 8.5
+                </div>
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
+                    <h5 class="font-bold text-sm truncate">Dhurandhar</h5>
+                    <p class="text-[10px] text-gray-300">Action • Comedy</p>
+                </div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F78004284-9fee-4da1-8979-e303c4dc0a4d.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400">
+                    <i class="fas fa-star text-[8px] mr-1"></i> 8.4
+                </div>
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
+                    <h5 class="font-bold text-sm truncate">FROM</h5>
+                    <p class="text-[10px] text-gray-300">Mystery • Horror</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trending Movies Section -->
+    <section class="py-8 px-4 md:px-12 bg-black">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+                <h2 class="text-2xl font-bold">Trending Movies</h2>
+                <span class="text-gray-600">|</span>
+                <a href="#" class="text-blue-500 text-sm font-medium hover:underline">View All</a>
+            </div>
+            <div class="flex gap-2">
+                <button class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"><i class="fas fa-chevron-left text-xs"></i></button>
+                <button class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"><i class="fas fa-chevron-right text-xs"></i></button>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F5d7b7fd4-ee3c-4e26-bdbc-46498e7293d0.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 6.6</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F06acf9fb-1476-41e8-b20e-ad2c79c652b0.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 8.0</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2Fab317dcb-601a-4ffb-a9e3-f288aeb7ac70.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 7.9</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F619d0520-c1df-4b42-8c4a-6327b7a964e5.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 0.0</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2Fd4b84d72-a22a-4e08-8c50-94c54c7e3192.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 0.0</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2Fa31c94e3-9b9f-4dce-b84d-270245e7e475.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 0.0</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F1dd0dd41-c8cf-42ce-a02e-76a1b5b61dd7.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 6.5</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Netflix Originals Section -->
+    <section class="py-8 px-4 md:px-12 bg-black">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+                <h2 class="text-2xl font-bold">Netflix Originals</h2>
+                <span class="text-gray-600">|</span>
+                <a href="#" class="text-blue-500 text-sm font-medium hover:underline">View All</a>
+            </div>
+            <div class="flex gap-2">
+                <button class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"><i class="fas fa-chevron-left text-xs"></i></button>
+                <button class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"><i class="fas fa-chevron-right text-xs"></i></button>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F01d1f247-f784-40eb-b22e-96ea1ecfda10.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 8.2</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2Fd86d3b13-c604-46a9-85f3-f3a843320914.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 7.8</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F5ab77646-0196-4f76-be91-5667f973bd4c.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 7.5</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F47fe0ed3-ba27-40f1-ac7f-fdc8508f998e.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 7.7</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F5b11f08e-a69f-4fcd-b4a1-c081d31ee268.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 8.7</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F5c594129-f818-464e-973d-19b626b0ec0f.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 8.2</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F6ff28eee-92c2-4707-b802-f9a2156bf884.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 7.9</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Disney+ Shows -->
+    <section class="py-8 px-4 md:px-12 bg-black">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+                <h2 class="text-2xl font-bold">Disney+ Shows</h2>
+                <span class="text-gray-600">|</span>
+                <a href="#" class="text-blue-500 text-sm font-medium hover:underline">View All</a>
+            </div>
+            <div class="flex gap-2">
+                <button class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"><i class="fas fa-chevron-left text-xs"></i></button>
+                <button class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"><i class="fas fa-chevron-right text-xs"></i></button>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F6acf7cd9-744c-43f3-af95-c770f4f94ee0.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 8.0</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2Fb2ab747f-1b45-4a16-8c88-442552f159ad.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 8.1</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F61c48778-396d-43f3-8e33-192d4dfc009f.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 8.4</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2Fd80e1675-2838-4a9c-82ca-dce1feb4d1b7.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 8.1</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F8351a77e-2c2f-4ed5-ac00-ac03b7171c7c.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 8.1</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F699a951e-6c58-4470-a613-3de95562f55e.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 8.5</div>
+            </div>
+            <div class="relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3]">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2Faaef2539-e3ca-48ce-b938-43b44fc33006.webp" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400"><i class="fas fa-star text-[8px] mr-1"></i> 8.1</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-black py-12 px-4 md:px-12 border-t border-white/10">
+        <div class="mx-auto max-w-[1440px]">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-8 mb-8">
+                <img alt="logo" src="/logo.png" class="h-8">
+                <div class="flex gap-8 text-sm text-gray-400">
+                    <a href="#" class="hover:text-white transition-colors">Terms of Service</a>
+                    <a href="#" class="hover:text-white transition-colors">Privacy Policy</a>
+                    <a href="#" class="hover:text-white transition-colors">FAQs</a>
+                    <a href="#" class="hover:text-white transition-colors">Contact</a>
+                </div>
+                <div class="flex gap-6 text-sm text-gray-400">
+                    <a href="#" class="hover:text-white transition-colors">Movies</a>
+                    <a href="#" class="hover:text-white transition-colors">TV Shows</a>
+                    <a href="#" class="hover:text-white transition-colors">Animes</a>
+                    <a href="#" class="hover:text-white transition-colors">Favorites</a>
+                </div>
+            </div>
+            <div class="text-center text-xs text-gray-500 border-t border-white/5 pt-8">
+                <p class="mb-4">cinehd.cc is a free streaming website, where to watch movies online free without registration required. With a big database and great features, we're confident, cinehd.cc is the best free movies online website in the space that you can't simply miss!</p>
+                <p>This site does not store any files on our server, we only linked to the media which is hosted on 3rd party services.</p>
+                <p class="mt-2">CineHD © 2024. All Rights Reserved</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Chatbot Button -->
+    <div class="fixed bottom-6 right-6 z-[100]">
+        <button class="bg-blue-500 w-12 h-12 rounded-full flex items-center justify-center text-white shadow-2xl hover:bg-blue-600 transition-all scale-100 hover:scale-110">
+            <i class="fas fa-robot text-xl"></i>
+        </button>
+    </div>
+
+
+
+  <script>
+    (function() {
+      // Block <a href="…"> navigation unconditionally.
+      // ONLY e.preventDefault() — onclick handlers on anchors still fire so all
+      // JavaScript UI bindings (tabs, dropdowns, modals) work as expected.
+      document.addEventListener('click', function(e) {
+        var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+        if (!a) return;
+        e.preventDefault();
+      }, true);
+
+      // Block window.open
+      try { window.open = function() { return null; }; } catch (_) {}
+
+      // Block history navigation APIs
+      try {
+        history.pushState = function() {};
+        history.replaceState = function() {};
+      } catch (_) {}
+
+      // Block location.assign and location.replace
+      try {
+        if (window.location) {
+          window.location.assign = function() {};
+          window.location.replace = function() {};
+        }
+      } catch (_) {}
+
+      // Block window.location.href = '…' and location.href = '…' direct assignments.
+      // Override the href setter on Location.prototype (iframe-local, does not affect parent).
+      try {
+        var _locProto = Location.prototype;
+        var _hrefDesc = Object.getOwnPropertyDescriptor(_locProto, 'href');
+        if (_hrefDesc && typeof _hrefDesc.set === 'function') {
+          Object.defineProperty(_locProto, 'href', {
+            get: _hrefDesc.get,
+            set: function() { /* navigation blocked — onclick already ran */ },
+            configurable: true,
+            enumerable: true,
+          });
+        }
+      } catch (_) {}
+    })();
+  </script>
+</body></html>
