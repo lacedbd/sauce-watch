@@ -303,46 +303,43 @@
             });
         }
 
-        // Fetch trailers/videos from TMDB API and play them in background
+        // Fetch trailers/videos from TMDB API
         async function fetchAndSetupTrailerBackground() {
             try {
                 const res = await fetch(`${TMDB_BASE}/${currentType}/${currentMovieId}/videos?api_key=${TMDB_API_KEY}`);
                 const data = await res.json();
-                
                 const videos = data.results || [];
                 const trailer = videos.find(v => v.site === 'YouTube' && v.type === 'Trailer') ||
                                 videos.find(v => v.site === 'YouTube' && v.type === 'Teaser') ||
                                 videos.find(v => v.site === 'YouTube');
-                                
-                if (trailer) {
-                    const playerContainer = document.getElementById('trailerPlayerContainer');
-                    if (playerContainer) {
-                        // Insert the YT player placeholder BEFORE the blocker div
-                        // so the blocker div stays on top and absorbs all touch events
-                        const playerDiv = document.createElement('div');
-                        playerDiv.id = 'trailerPlayer';
-                        playerDiv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;';
-                        const blocker = document.getElementById('ytBlocker');
-                        playerContainer.insertBefore(playerDiv, blocker);
-                        
-                        if (ytApiReady) {
-                            setupTrailerPlayer(trailer.key);
-                        } else {
-                            pendingTrailerKey = trailer.key;
-                        }
+                if (!trailer) return;
 
-                        // Fallback trigger: play video on first click/tap to bypass browser autoplay policies
-                        const triggerAutoplay = () => {
-                            if (trailerPlayer && typeof trailerPlayer.playVideo === 'function') {
-                                trailerPlayer.playVideo();
-                            }
-                        };
-                        document.body.addEventListener('click', triggerAutoplay, { once: true });
-                        document.body.addEventListener('touchstart', triggerAutoplay, { once: true });
+                function doInjectPlayer() {
+                    const playerContainer = document.getElementById('trailerPlayerContainer');
+                    if (!playerContainer || document.getElementById('trailerPlayer')) return;
+                    const playerDiv = document.createElement('div');
+                    playerDiv.id = 'trailerPlayer';
+                    playerDiv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;';
+                    playerContainer.appendChild(playerDiv);
+                    if (ytApiReady) {
+                        setupTrailerPlayer(trailer.key);
+                    } else {
+                        pendingTrailerKey = trailer.key;
                     }
                 }
+
+                const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+                if (isMobile) {
+                    // On mobile: defer player creation until first user gesture
+                    // so browser allows autoplay → video goes straight to PLAYING → no controls shown
+                    const onGesture = () => { doInjectPlayer(); };
+                    document.addEventListener('touchstart', onGesture, { once: true, passive: true });
+                    document.addEventListener('click', onGesture, { once: true });
+                } else {
+                    doInjectPlayer();
+                }
             } catch (err) {
-                console.error("Failed to load background trailer video:", err);
+                console.error('Failed to load background trailer video:', err);
             }
         }
 
