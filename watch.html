@@ -604,6 +604,8 @@
                         if (validSeasons.length > 0) {
                             fetchEpisodes(validSeasons[0].season_number);
                         }
+                    }
+                    
                     document.getElementById('movieRating').innerText = data.vote_average ? data.vote_average.toFixed(1) : "0.0";
                     
                     // Fade in the hero content block now that everything is populated
