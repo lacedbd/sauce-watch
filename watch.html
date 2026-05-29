@@ -729,6 +729,9 @@
                             <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-zinc-800 border border-white/5 group-hover:border-white/20 transition-all shadow-lg">
                                 <img src="${POSTER_BASE}${item.backdrop_path}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
                                 <img id="logo-${item.id}" src="" class="absolute bottom-2 left-2 w-1/3 object-contain drop-shadow-md hidden z-10 pointer-events-none">
+                                <div class="absolute inset-0 flex justify-center items-center opacity-0 transition-opacity z-20 pointer-events-none" id="hover-spinner-${item.id}">
+                                    <div class="w-8 h-8 border-2 border-white/20 border-t-red-600 rounded-full animate-spin"></div>
+                                </div>
                                 <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-white flex items-center gap-1 opacity-0 transition-opacity z-10" id="volIcon-${item.id}">
                                     <i class="fas fa-volume-mute text-xs"></i>
                                 </div>
@@ -768,6 +771,7 @@
                             const trailerWrapper = card.querySelector(`#trailer-wrapper-${item.id}`);
                             const trailerPlayerDiv = card.querySelector(`#trailer-player-${item.id}`);
                             const volIcon = card.querySelector(`#volIcon-${item.id}`);
+                            const spinner = card.querySelector(`#hover-spinner-${item.id}`);
 
                             card.addEventListener('mouseenter', () => {
                                 hoverTimer = setTimeout(async () => {
@@ -776,6 +780,9 @@
                                         volIcon.classList.remove('opacity-0');
                                         return;
                                     }
+                                    
+                                    spinner.classList.remove('opacity-0');
+                                    
                                     try {
                                         const vidRes = await fetch(`${TMDB_BASE}/${type}/${item.id}/videos?api_key=${TMDB_API_KEY}`);
                                         const vidData = await vidRes.json();
@@ -815,19 +822,26 @@
                                                                     trailerWrapper.style.transition = 'opacity 0.5s ease';
                                                                     trailerWrapper.style.opacity = '1';
                                                                     volIcon.classList.remove('opacity-0');
+                                                                    spinner.classList.add('opacity-0');
                                                                 }
                                                             }, 1000);
                                                         }
                                                     }
                                                 }
                                             });
+                                        } else {
+                                            spinner.classList.add('opacity-0');
                                         }
-                                    } catch (e) { console.error(e); }
+                                    } catch (e) { 
+                                        console.error(e); 
+                                        spinner.classList.add('opacity-0');
+                                    }
                                 }, 500); // 500ms hover intent delay
                             });
 
                             card.addEventListener('mouseleave', () => {
                                 clearTimeout(hoverTimer);
+                                spinner.classList.add('opacity-0');
                                 trailerWrapper.style.transition = 'none';
                                 trailerWrapper.style.opacity = '0.01';
                                 volIcon.classList.add('opacity-0');
