@@ -17,35 +17,52 @@
         .scrollbar-hide::-webkit-scrollbar {
             display: none;
         }
-        /* Wrapper to clip video to container, no overflow */
+        /* Static backdrop image - always visible, fades OUT when video starts playing */
+        #backdropStatic {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 1;
+            transition: opacity 1.5s ease;
+            z-index: 2;
+            pointer-events: none;
+        }
+        /* Video container - starts invisible, fades IN when confirmed PLAYING */
         #trailerPlayerContainer {
             position: absolute;
             inset: 0;
             overflow: hidden;
             opacity: 0;
-            transition: opacity 1.2s ease;
+            visibility: hidden;
+            transition: opacity 1.5s ease, visibility 0s linear 1.5s;
+            z-index: 1;
         }
-        /* Force the generated iframe by YT API to fill and center-scale */
+        #trailerPlayerContainer.is-playing {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 1.5s ease, visibility 0s linear 0s;
+        }
+        /* Force the generated iframe by YT API to fill and center-crop */
         #trailerPlayerContainer iframe {
             position: absolute !important;
             top: 50% !important;
             left: 50% !important;
             width: 100vw !important;
-            height: 56.25vw !important; /* 16:9 */
+            height: 56.25vw !important;
             min-height: 100vh !important;
-            min-width: 177.78vh !important; /* 16:9 */
+            min-width: 177.78vh !important;
             transform: translate(-50%, -50%) !important;
             pointer-events: none !important;
             border: none !important;
         }
-        /* Wrapper div inserted by YT API - make it fill container */
         #trailerPlayer {
             position: absolute;
             inset: 0;
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: 1;
         }
     </style>
     <!-- AD TAGS PLACEHOLDER (Paste Adsterra tags here to monetize the player page) -->
@@ -63,15 +80,20 @@
     </button>
 
     <!-- Details Hero Section (Immersive Background) -->
-    <section id="heroSection" class="relative h-[85vh] md:h-[90vh] w-full overflow-hidden bg-cover bg-center flex items-end">
-        <!-- Ambient Backdrop Trailer or Image container -->
-        <div id="ambientBackdrop" class="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0 bg-cover bg-center opacity-85">
+    <section id="heroSection" class="relative h-[85vh] md:h-[90vh] w-full overflow-hidden bg-zinc-950 flex items-end">
+        <!-- Layer 1 (bottom): YouTube video - hidden until confirmed playing -->
+        <div id="ambientBackdrop" class="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
             <div id="trailerPlayerContainer" class="w-full h-full absolute inset-0">
                 <!-- YT Player div injected here by JS -->
             </div>
         </div>
-        <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent z-10"></div>
-        <div class="absolute inset-0 bg-gradient-to-r from-zinc-950/40 via-transparent to-transparent z-10"></div>
+
+        <!-- Layer 2 (top): Static backdrop image - always visible, fades out when video plays -->
+        <img id="backdropStatic" src="" alt="" />
+
+        <!-- Gradient overlays -->
+        <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent z-10 pointer-events-none"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-zinc-950/40 via-transparent to-transparent z-10 pointer-events-none"></div>
 
         <!-- Overlaid text & options details -->
         <div class="relative z-20 max-w-4xl px-6 md:px-12 pb-16 space-y-4">
@@ -254,14 +276,14 @@
                     },
                     onStateChange: (event) => {
                         if (event.data === YT.PlayerState.PLAYING) {
-                            // Only reveal the video once it's confirmed PLAYING
-                            // This way the user never sees the paused state with controls
+                            // Video is confirmed playing - crossfade: fade IN video, fade OUT static image
                             const container = document.getElementById('trailerPlayerContainer');
-                            if (container) container.style.opacity = '1';
+                            const staticImg = document.getElementById('backdropStatic');
+                            if (container) container.classList.add('is-playing');
+                            if (staticImg) staticImg.style.opacity = '0';
                             document.getElementById('trailerVolumeBtn').classList.remove('hidden');
                         }
                         if (event.data === YT.PlayerState.PAUSED) {
-                            // Force resume immediately to prevent controls from appearing
                             event.target.playVideo();
                         }
                     }
@@ -477,7 +499,9 @@
                     document.getElementById('movieGenres').innerText = genresList || "N/A";
                     
                     if (data.backdrop_path) {
-                        document.getElementById('ambientBackdrop').style.backgroundImage = `url('${BACKDROP_BASE}${data.backdrop_path}')`;
+                        // Set the static image that shows while video loads
+                        const staticImg = document.getElementById('backdropStatic');
+                        if (staticImg) staticImg.src = `${BACKDROP_BASE}${data.backdrop_path}`;
                     }
 
                     // TV Specific: Populate seasons options
