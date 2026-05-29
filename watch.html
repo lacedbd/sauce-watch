@@ -44,7 +44,7 @@
             visibility: visible;
             transition: opacity 1.5s ease, visibility 0s linear 0s;
         }
-        /* Force the generated iframe by YT API to fill and center-crop */
+        /* Force the generated iframe by YT API to fill and center-crop + scale up to eliminate letterboxing */
         #trailerPlayerContainer iframe {
             position: absolute !important;
             top: 50% !important;
@@ -53,7 +53,8 @@
             height: 56.25vw !important;
             min-height: 100vh !important;
             min-width: 177.78vh !important;
-            transform: translate(-50%, -50%) !important;
+            /* scale(1.35) crops ~17% off each edge — eliminates letterbox bars on cinematic videos */
+            transform: translate(-50%, -50%) scale(1.35) !important;
             pointer-events: none !important;
             border: none !important;
         }
@@ -63,6 +64,32 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
+        }
+        /* ── Hero focus/idle mode ── */
+        /* When trailer is playing and mouse is idle, collapse UI to let you watch */
+        #heroContent {
+            transition: transform 0.6s ease, opacity 0.6s ease;
+        }
+        #heroTitle {
+            transition: font-size 0.6s ease, transform 0.6s ease;
+            display: block;
+        }
+        #heroMeta, #heroOverview, #heroButtons {
+            transition: opacity 0.5s ease, transform 0.5s ease, max-height 0.5s ease;
+            overflow: hidden;
+        }
+        /* focused = trailer playing, mouse idle — collapse details */
+        #heroSection.trailer-focused #heroMeta,
+        #heroSection.trailer-focused #heroOverview,
+        #heroSection.trailer-focused #heroButtons {
+            opacity: 0;
+            transform: translateY(12px);
+            max-height: 0;
+            pointer-events: none;
+        }
+        #heroSection.trailer-focused #heroTitle {
+            font-size: clamp(1.5rem, 3vw, 2.5rem) !important;
+            letter-spacing: -0.02em;
         }
     </style>
     <!-- AD TAGS PLACEHOLDER (Paste Adsterra tags here to monetize the player page) -->
@@ -96,11 +123,11 @@
         <div class="absolute inset-0 bg-gradient-to-r from-zinc-950/40 via-transparent to-transparent z-10 pointer-events-none"></div>
 
         <!-- Overlaid text & options details -->
-        <div class="relative z-20 max-w-4xl px-6 md:px-12 pb-16 space-y-4">
-            <h1 id="movieTitle" class="text-5xl md:text-8xl font-black uppercase tracking-tighter text-white drop-shadow-lg leading-none">Loading Title...</h1>
+        <div id="heroContent" class="relative z-20 max-w-4xl px-6 md:px-12 pb-16 space-y-4">
+            <h1 id="heroTitle" class="text-5xl md:text-8xl font-black uppercase tracking-tighter text-white drop-shadow-lg leading-none">Loading Title...</h1>
             
             <!-- Metadata details row -->
-            <div class="flex flex-wrap items-center gap-3 text-xs md:text-sm text-gray-300 font-medium">
+            <div id="heroMeta" class="flex flex-wrap items-center gap-3 text-xs md:text-sm text-gray-300 font-medium">
                 <span class="text-red-500 font-bold flex items-center gap-1">★ <span id="movieRating">0.0</span></span>
                 <span class="opacity-40">•</span>
                 <span id="movieYear">0000</span>
@@ -111,12 +138,12 @@
             </div>
 
             <!-- Plot overview description -->
-            <p id="movieOverview" class="text-zinc-300 text-sm md:text-base leading-relaxed max-w-2xl mt-4 line-clamp-3">
+            <p id="heroOverview" class="text-zinc-300 text-sm md:text-base leading-relaxed max-w-2xl mt-4 line-clamp-3">
                 Fetching latest content plot overview...
             </p>
 
             <!-- Pill options buttons row -->
-            <div class="flex items-center gap-3 pt-6 flex-wrap">
+            <div id="heroButtons" class="flex items-center gap-3 pt-6 flex-wrap">
                 <button id="mainPlayBtn" class="bg-white hover:bg-zinc-200 text-black px-8 py-3 rounded-full font-bold flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95 shadow-xl">
                     <i class="fas fa-play"></i> Play
                 </button>
@@ -282,6 +309,8 @@
                             if (container) container.classList.add('is-playing');
                             if (staticImg) staticImg.style.opacity = '0';
                             document.getElementById('trailerVolumeBtn').classList.remove('hidden');
+                            // Activate idle-mode: mouse stops moving → UI collapses to show trailer
+                            if (!trailerIsPlaying) enableHeroFocusMode();
                         }
                         if (event.data === YT.PlayerState.PAUSED) {
                             event.target.playVideo();
@@ -492,8 +521,8 @@
                     const genresList = (data.genres || []).map(g => g.name).join(", ");
                     
                     document.title = `Watching ${title} - sauce.watch`;
-                    document.getElementById('movieTitle').innerText = title;
-                    document.getElementById('movieOverview').innerText = data.overview || "No description found.";
+                    document.getElementById('heroTitle').innerText = title;
+                    document.getElementById('heroOverview').innerText = data.overview || "No description found.";
                     document.getElementById('movieYear').innerText = year;
                     document.getElementById('movieRuntime').innerText = runtime;
                     document.getElementById('movieGenres').innerText = genresList || "N/A";
@@ -607,6 +636,36 @@
             } catch (err) {
                 console.error("Recommendations fetch failed:", err);
             }
+        }
+
+        // ── Hero idle/focus mode ──
+        // Once trailer is playing, if mouse is idle for 3s → collapse UI to show trailer cleanly
+        // Any mouse movement instantly restores the full UI
+        let heroIdleTimer = null;
+        let trailerIsPlaying = false;
+
+        function enableHeroFocusMode() {
+            trailerIsPlaying = true;
+            const hero = document.getElementById('heroSection');
+            hero.addEventListener('mousemove', onHeroMouseMove);
+            hero.addEventListener('mouseleave', onHeroMouseLeave);
+        }
+
+        function onHeroMouseMove() {
+            const hero = document.getElementById('heroSection');
+            // Mouse is moving — show full UI immediately
+            hero.classList.remove('trailer-focused');
+            clearTimeout(heroIdleTimer);
+            // After 3s of no movement, collapse to focused mode
+            heroIdleTimer = setTimeout(() => {
+                if (trailerIsPlaying) hero.classList.add('trailer-focused');
+            }, 3000);
+        }
+
+        function onHeroMouseLeave() {
+            const hero = document.getElementById('heroSection');
+            clearTimeout(heroIdleTimer);
+            hero.classList.remove('trailer-focused');
         }
 
         window.addEventListener('DOMContentLoaded', loadPlayerEngine);
