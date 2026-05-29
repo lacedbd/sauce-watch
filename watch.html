@@ -22,11 +22,11 @@
             position: absolute;
             inset: 0;
             overflow: hidden;
+            opacity: 0;
+            transition: opacity 1.2s ease;
         }
         /* Force the generated iframe by YT API to fill and center-scale */
-        #trailerPlayerContainer iframe,
-        #trailerPlayerInner iframe,
-        #trailerPlayer iframe {
+        #trailerPlayerContainer iframe {
             position: absolute !important;
             top: 50% !important;
             left: 50% !important;
@@ -67,9 +67,7 @@
         <!-- Ambient Backdrop Trailer or Image container -->
         <div id="ambientBackdrop" class="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0 bg-cover bg-center opacity-85">
             <div id="trailerPlayerContainer" class="w-full h-full absolute inset-0">
-                <!-- Transparent interaction blocker: sits ABOVE the youtube iframe, absorbs all pointer/touch events -->
-                <!-- so YouTube's player UI never detects interaction and never shows play/pause controls -->
-                <div id="ytBlocker" style="position:absolute;inset:0;z-index:2;width:100%;height:100%;"></div>
+                <!-- YT Player div injected here by JS -->
             </div>
         </div>
         <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent z-10"></div>
@@ -231,7 +229,6 @@
         };
 
         function setupTrailerPlayer(videoKey) {
-            // Replaces <div id="trailerPlayer"> with <iframe> with precise options
             trailerPlayer = new YT.Player('trailerPlayer', {
                 width: '1920',
                 height: '1080',
@@ -252,18 +249,24 @@
                 },
                 events: {
                     onReady: (event) => {
-                        event.target.playVideo();
                         event.target.mute();
+                        event.target.playVideo();
                     },
                     onStateChange: (event) => {
-                        // Force play if paused (handles user pause triggers or auto-pauses)
+                        if (event.data === YT.PlayerState.PLAYING) {
+                            // Only reveal the video once it's confirmed PLAYING
+                            // This way the user never sees the paused state with controls
+                            const container = document.getElementById('trailerPlayerContainer');
+                            if (container) container.style.opacity = '1';
+                            document.getElementById('trailerVolumeBtn').classList.remove('hidden');
+                        }
                         if (event.data === YT.PlayerState.PAUSED) {
+                            // Force resume immediately to prevent controls from appearing
                             event.target.playVideo();
                         }
                     }
                 }
             });
-            document.getElementById('trailerVolumeBtn').classList.remove('hidden');
         }
 
         // Switch stream server inside the modal player
