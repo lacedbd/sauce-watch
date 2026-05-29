@@ -44,20 +44,6 @@
             visibility: visible;
             transition: opacity 1.5s ease, visibility 0s linear 0s;
         }
-        /* Force the generated iframe by YT API to fill and center-crop + scale up to eliminate letterboxing */
-        #trailer-wrapper iframe {
-            position: absolute !important;
-            top: 50% !important;
-            left: 50% !important;
-            width: 100vw !important;
-            height: 56.25vw !important;
-            min-height: 100vh !important;
-            min-width: 177.78vh !important;
-            /* Zoom in 1.6x to completely crop out baked-in black letterboxing and push UI off screen */
-            transform: translate(-50%, -50%) scale(1.6) !important;
-            pointer-events: none !important;
-            border: none !important;
-        }
         #trailerPlayer {
             position: absolute;
             inset: 0;
