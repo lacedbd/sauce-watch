@@ -67,18 +67,22 @@
         }
         /* ── Hero focus/idle mode ── */
         #heroContent {
-            transition: all 0.6s ease;
+            transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
         }
         #heroTitle {
             display: block;
-            transition: font-size 0.5s ease;
+            transform-origin: left bottom;
+            transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+            will-change: transform;
         }
         #heroMeta, #heroOverview {
-            transition: opacity 0.4s ease, max-height 0.5s ease, margin 0.4s ease;
+            transition: opacity 0.5s cubic-bezier(0.25, 1, 0.5, 1), 
+                        max-height 0.5s cubic-bezier(0.25, 1, 0.5, 1), 
+                        margin 0.5s cubic-bezier(0.25, 1, 0.5, 1);
             overflow: hidden;
         }
         #heroButtons {
-            transition: opacity 0.4s ease;
+            transition: padding-top 0.6s cubic-bezier(0.25, 1, 0.5, 1);
         }
         /* focused = trailer playing, mouse idle — hide meta + desc, keep title + buttons */
         #heroSection.trailer-focused #heroMeta,
@@ -88,14 +92,13 @@
             margin: 0 !important;
             pointer-events: none;
         }
-        /* Title shrinks to match Cineby's idle state */
+        /* Title shrinks smoothly via transform: scale */
         #heroSection.trailer-focused #heroTitle {
-            font-size: clamp(1.8rem, 3.5vw, 3rem) !important;
-            letter-spacing: -0.01em;
+            transform: scale(0.65);
         }
-        /* Buttons stay fully visible in idle state */
+        /* Tighten up buttons layout spacing in idle state */
         #heroSection.trailer-focused #heroButtons {
-            opacity: 1;
+            padding-top: 0.75rem !important;
         }
     </style>
     <!-- AD TAGS PLACEHOLDER (Paste Adsterra tags here to monetize the player page) -->
@@ -130,7 +133,7 @@
 
         <!-- Overlaid text & options details -->
         <div id="heroContent" class="relative z-20 max-w-4xl px-6 md:px-12 pb-16 space-y-4">
-            <h1 id="heroTitle" class="text-5xl md:text-8xl font-black uppercase tracking-tighter text-white drop-shadow-lg leading-none">Loading Title...</h1>
+            <h1 id="heroTitle" class="text-4xl md:text-6xl font-black uppercase tracking-tighter text-white drop-shadow-lg leading-none">Loading Title...</h1>
             
             <!-- Metadata details row -->
             <div id="heroMeta" class="flex flex-wrap items-center gap-3 text-xs md:text-sm text-gray-300 font-medium">
