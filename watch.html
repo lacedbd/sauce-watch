@@ -198,13 +198,18 @@
             </div>
         </section>
 
-        <!-- Recommendations Section -->
-        <section id="recommendationsSection" class="space-y-6 hidden">
-            <div class="flex items-center gap-2 border-l-2 border-green-600 pl-3">
-                <h2 class="text-2xl font-bold text-white">People also like</h2>
+        <!-- Recommendations Section (Infinite Scroll) -->
+        <section id="recommendationsSection" class="space-y-6 hidden pb-12">
+            <div class="flex items-center gap-2 border-l-2 border-red-600 pl-3">
+                <h2 class="text-2xl font-bold text-white">You may like</h2>
             </div>
-            <div id="recommendationsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+            <!-- Changed grid to better fit landscape cards -->
+            <div id="recommendationsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 <!-- Injected dynamically -->
+            </div>
+            <!-- Invisible trigger element for IntersectionObserver -->
+            <div id="loadMoreTrigger" class="h-10 w-full flex justify-center items-center">
+                <div id="loadingSpinner" class="hidden w-8 h-8 border-4 border-zinc-800 border-t-red-600 rounded-full animate-spin"></div>
             </div>
         </section>
     </main>
@@ -619,8 +624,8 @@
                 // Fetch Cast credits
                 fetchCredits();
 
-                // Fetch recommendations
-                fetchRecommendations();
+                // Initialize recommendations (infinite scroll)
+                initRecommendations();
 
             } catch (err) {
                 console.error("Details API pipeline failed:", err);
@@ -639,8 +644,9 @@
                 if (cast.length > 0) {
                     document.getElementById('castSection').classList.remove('hidden');
                     cast.forEach(actor => {
-                        const card = document.createElement('div');
-                        card.className = "min-w-[120px] max-w-[120px] bg-white/5 border border-white/5 rounded-2xl overflow-hidden text-center p-3 hover:border-white/10 transition-all flex flex-col items-center shadow-lg";
+                        const card = document.createElement('a');
+                        card.href = `actor.html?id=${actor.id}`;
+                        card.className = "min-w-[120px] max-w-[120px] bg-white/5 border border-white/5 rounded-2xl overflow-hidden text-center p-3 hover:border-white/30 hover:bg-white/10 transition-all flex flex-col items-center shadow-lg cursor-pointer";
                         
                         const profileUrl = actor.profile_path 
                             ? `https://image.tmdb.org/t/p/w185${actor.profile_path}` 
@@ -659,41 +665,144 @@
             }
         }
 
-        // Fetch Recommendations Grid
-        async function fetchRecommendations() {
-            try {
-                const res = await fetch(`${TMDB_BASE}/${currentType}/${currentMovieId}/recommendations?api_key=${TMDB_API_KEY}`);
-                const data = await res.json();
-                const grid = document.getElementById('recommendationsGrid');
-                grid.innerHTML = '';
+        // Recommendations Pagination State
+        let currentRecPage = 1;
+        let isFetchingRecs = false;
+        let hasMoreRecs = true;
 
-                const items = (data.results || []).slice(0, 8);
+        async function initRecommendations() {
+            // Setup Intersection Observer for Infinite Scroll
+            const trigger = document.getElementById('loadMoreTrigger');
+            const observer = new IntersectionObserver((entries) => {
+                if (entries[0].isIntersecting && hasMoreRecs && !isFetchingRecs) {
+                    loadNextRecommendationsPage();
+                }
+            }, { rootMargin: '200px' });
+            observer.observe(trigger);
+
+            // Load first page immediately
+            await loadNextRecommendationsPage();
+        }
+
+        async function loadNextRecommendationsPage() {
+            if (isFetchingRecs || !hasMoreRecs) return;
+            isFetchingRecs = true;
+            document.getElementById('loadingSpinner').classList.remove('hidden');
+
+            try {
+                let res = await fetch(`${TMDB_BASE}/${currentType}/${currentMovieId}/recommendations?api_key=${TMDB_API_KEY}&page=${currentRecPage}`);
+                let data = await res.json();
+                
+                // If recommendations are empty, fallback to 'similar' endpoint to keep infinite scroll going
+                if (!data.results || data.results.length === 0) {
+                    res = await fetch(`${TMDB_BASE}/${currentType}/${currentMovieId}/similar?api_key=${TMDB_API_KEY}&page=${currentRecPage}`);
+                    data = await res.json();
+                }
+
+                const grid = document.getElementById('recommendationsGrid');
+                const items = data.results || [];
+                
+                if (items.length === 0 || currentRecPage >= data.total_pages) {
+                    hasMoreRecs = false;
+                }
+
                 if (items.length > 0) {
                     document.getElementById('recommendationsSection').classList.remove('hidden');
+                    
                     items.forEach(item => {
-                        if (!item.poster_path) return;
+                        // Use backdrop_path for landscape layout
+                        if (!item.backdrop_path) return;
                         
+                        const type = item.media_type || currentType;
                         const card = document.createElement('a');
-                        card.href = `watch.html?id=${item.id}&type=${currentType}`;
-                        card.className = "relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3] block";
+                        card.href = `watch.html?id=${item.id}&type=${type}`;
+                        // Changed to landscape wrapper (aspect-video is 16:9)
+                        card.className = "flex flex-col gap-2 group cursor-pointer w-full";
                         
                         const rating = item.vote_average ? item.vote_average.toFixed(1) : "0.0";
                         const title = item.title || item.name;
+                        const dateText = item.release_date || item.first_air_date || "";
+                        const year = dateText ? dateText.split('-')[0] : "";
+                        const typeLabel = type === 'tv' ? 'TV Show' : 'Movie';
 
                         card.innerHTML = `
-                            <img src="${POSTER_BASE}${item.poster_path}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-                            <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400">
-                                <i class="fas fa-star text-[8px] mr-1"></i> ${rating}
+                            <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-zinc-800 border border-white/5 group-hover:border-white/20 transition-all shadow-lg">
+                                <img src="${POSTER_BASE}${item.backdrop_path}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-white flex items-center gap-1 opacity-0 transition-opacity" id="volIcon-${item.id}">
+                                    <i class="fas fa-volume-mute text-xs"></i>
+                                </div>
+                                <div id="trailer-container-${item.id}" class="absolute inset-0 pointer-events-none opacity-0 transition-opacity duration-700"></div>
                             </div>
-                            <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
-                                <h5 class="font-bold text-sm text-white truncate drop-shadow-md">${title}</h5>
+                            <div class="px-1">
+                                <h5 class="font-bold text-sm text-white truncate w-full group-hover:text-red-400 transition-colors">${title}</h5>
+                                <div class="flex items-center gap-2 text-[11px] text-zinc-400 font-medium mt-1">
+                                    <span class="text-yellow-500"><i class="fas fa-star text-[9px] mr-0.5"></i> ${rating}</span>
+                                    ${year ? `<span class="opacity-40">•</span><span>${year}</span>` : ''}
+                                    <span class="opacity-40">•</span><span>${typeLabel}</span>
+                                </div>
                             </div>
                         `;
+
+                        // Add Hover Trailer Logic (only on desktop/non-touch)
+                        if (!('ontouchstart' in window)) {
+                            let hoverTimer = null;
+                            const trailerContainer = card.querySelector(`#trailer-container-${item.id}`);
+                            const volIcon = card.querySelector(`#volIcon-${item.id}`);
+
+                            card.addEventListener('mouseenter', () => {
+                                hoverTimer = setTimeout(async () => {
+                                    if (trailerContainer.innerHTML !== '') {
+                                        trailerContainer.classList.remove('opacity-0');
+                                        volIcon.classList.remove('opacity-0');
+                                        return;
+                                    }
+                                    try {
+                                        const vidRes = await fetch(`${TMDB_BASE}/${type}/${item.id}/videos?api_key=${TMDB_API_KEY}`);
+                                        const vidData = await vidRes.json();
+                                        const vids = vidData.results || [];
+                                        const trailer = vids.find(v => v.type === 'Trailer' && v.site === 'YouTube') || vids.find(v => v.site === 'YouTube');
+                                        
+                                        if (trailer) {
+                                            trailerContainer.innerHTML = `
+                                                <iframe class="w-full h-full absolute inset-0 transform scale-150 pointer-events-none" 
+                                                    src="https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&loop=1&playlist=${trailer.key}" 
+                                                    frameborder="0" allow="autoplay; encrypted-media">
+                                                </iframe>
+                                            `;
+                                            // Slight delay before fading in to let iframe load
+                                            setTimeout(() => {
+                                                if (card.matches(':hover')) {
+                                                    trailerContainer.classList.remove('opacity-0');
+                                                    volIcon.classList.remove('opacity-0');
+                                                }
+                                            }, 800);
+                                        }
+                                    } catch (e) { console.error(e); }
+                                }, 500); // 500ms hover intent delay
+                            });
+
+                            card.addEventListener('mouseleave', () => {
+                                clearTimeout(hoverTimer);
+                                trailerContainer.classList.add('opacity-0');
+                                volIcon.classList.add('opacity-0');
+                                // Destroy iframe after fade out to save resources
+                                setTimeout(() => {
+                                    if (!card.matches(':hover')) {
+                                        trailerContainer.innerHTML = '';
+                                    }
+                                }, 700);
+                            });
+                        }
+
                         grid.appendChild(card);
                     });
                 }
+                currentRecPage++;
             } catch (err) {
-                console.error("Recommendations fetch failed:", err);
+                console.error("Recommendations pagination failed:", err);
+            } finally {
+                isFetchingRecs = false;
+                document.getElementById('loadingSpinner').classList.add('hidden');
             }
         }
 

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Actor Profile - sauce.watch</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            border: "hsl(var(--border))",
+            background: "hsl(var(--background))",
+            foreground: "hsl(var(--foreground))",
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --background: 0 0% 0%;
+      --foreground: 0 0% 98%;
+      --border: 240 3.7% 15.9%;
+    }
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: 'Inter', sans-serif;
+    }
+    .hero-gradient {
+      background: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.4) 50%, rgba(0, 0, 0, 0.8) 100%);
+    }
+  </style>
+</head>
+
+<body class="overflow-x-hidden">
+
+  <!-- Header -->
+  <header class="fixed top-0 z-[100] w-full bg-black/60 backdrop-blur-md border-b border-white/5">
+    <div class="mx-auto flex items-center justify-between max-w-[1440px] px-4 py-4 md:px-8">
+      <a href="index.html" class="flex items-center text-2xl font-black tracking-tighter text-white">
+        sauce<span class="text-zinc-500">.watch</span>
+      </a>
+      <div class="flex items-center gap-4">
+        <a href="index.html" class="text-white hover:text-red-500 transition-colors text-sm font-bold">Home</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Actor Hero Section -->
+  <section id="heroSection" class="relative pt-32 pb-16 px-4 md:px-12 w-full bg-zinc-900 transition-all duration-700 bg-cover bg-center min-h-[50vh] flex flex-col justify-end">
+    <div class="absolute inset-0 hero-gradient z-10"></div>
+    <div class="relative z-20 max-w-[1440px] mx-auto w-full flex flex-col md:flex-row items-center md:items-end gap-8 opacity-0 transition-opacity duration-1000" id="actorHeroContent">
+      <img id="actorProfileImg" src="" class="w-48 h-48 md:w-64 md:h-64 object-cover rounded-full border-4 border-white/10 shadow-2xl" alt="Actor">
+      <div class="text-center md:text-left flex-1">
+        <h1 id="actorName" class="text-4xl md:text-6xl font-black text-white mb-2 drop-shadow-lg leading-none"></h1>
+        <div class="flex items-center justify-center md:justify-start gap-4 text-sm text-gray-300 mb-4 font-medium">
+          <span id="actorDepartment"></span>
+          <span class="opacity-40">•</span>
+          <span id="actorBirthday"></span>
+          <span class="opacity-40">•</span>
+          <span id="actorBirthPlace"></span>
+        </div>
+        <p id="actorBio" class="text-sm md:text-base text-gray-300 leading-relaxed max-w-3xl line-clamp-4 md:line-clamp-none"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Filmography Section -->
+  <section class="py-12 px-4 md:px-12 bg-black min-h-[50vh] relative z-30">
+    <div class="max-w-[1440px] mx-auto">
+      <div class="flex items-center gap-2 border-l-2 border-red-600 pl-3 mb-8">
+        <h2 class="text-2xl font-bold text-white">Filmography</h2>
+        <span class="text-zinc-500 text-sm font-medium ml-2">Movies & TV Shows</span>
+      </div>
+      <div id="filmographyGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+        <!-- Injected via JavaScript -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-black py-12 px-4 md:px-12 border-t border-white/10 relative z-30">
+    <div class="mx-auto max-w-[1440px] text-center text-xs text-gray-500">
+      <p>sauce.watch © 2026. All Rights Reserved</p>
+    </div>
+  </footer>
+
+  <script>
+    const TMDB_API_KEY = "607bf14c16a8ab16f9ed61e6ba5920a7";
+    const TMDB_BASE = "https://api.themoviedb.org/3";
+    const POSTER_BASE = "https://image.tmdb.org/t/p/w500";
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const actorId = urlParams.get('id');
+
+    async function initActorPage() {
+      if (!actorId) {
+        window.location.href = 'index.html';
+        return;
+      }
+      try {
+        // Fetch Actor Details
+        const resActor = await fetch(`${TMDB_BASE}/person/${actorId}?api_key=${TMDB_API_KEY}`);
+        const actor = await resActor.json();
+
+        document.title = `${actor.name} - sauce.watch`;
+        document.getElementById('actorName').innerText = actor.name;
+        document.getElementById('actorDepartment').innerText = actor.known_for_department || "Acting";
+        document.getElementById('actorBirthday').innerText = actor.birthday || "Unknown";
+        document.getElementById('actorBirthPlace').innerText = actor.place_of_birth || "Unknown";
+        document.getElementById('actorBio').innerText = actor.biography || "No biography available.";
+        
+        const profileImg = document.getElementById('actorProfileImg');
+        if (actor.profile_path) {
+          profileImg.src = `https://image.tmdb.org/t/p/h632${actor.profile_path}`;
+        } else {
+          profileImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(actor.name)}&background=27272a&color=fff&size=512`;
+        }
+
+        document.getElementById('actorHeroContent').classList.remove('opacity-0');
+
+        // Fetch Credits
+        const resCredits = await fetch(`${TMDB_BASE}/person/${actorId}/combined_credits?api_key=${TMDB_API_KEY}`);
+        const credits = await resCredits.json();
+        
+        const grid = document.getElementById('filmographyGrid');
+        
+        // Sort by popularity and filter out items without posters
+        const sortedCast = (credits.cast || []).filter(c => c.poster_path).sort((a, b) => b.popularity - a.popularity);
+
+        sortedCast.forEach(item => {
+          const type = item.media_type || (item.title ? 'movie' : 'tv');
+          const title = item.title || item.name;
+          const rating = item.vote_average ? item.vote_average.toFixed(1) : "0.0";
+          const dateText = item.release_date || item.first_air_date || "";
+          const year = dateText ? dateText.split('-')[0] : "";
+          
+          const card = document.createElement('a');
+          card.href = `watch.html?id=${item.id}&type=${type}`;
+          card.className = "relative group cursor-pointer rounded-xl overflow-hidden border border-white/5 bg-white/5 aspect-[2/3] block";
+          
+          card.innerHTML = `
+            <img src="${POSTER_BASE}${item.poster_path}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+            <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-yellow-400">
+                <i class="fas fa-star text-[8px] mr-1"></i> ${rating}
+            </div>
+            <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
+                <h5 class="font-bold text-sm text-white truncate drop-shadow-md">${title}</h5>
+                <p class="text-[10px] text-gray-300 truncate">${type === 'tv' ? 'TV Show' : 'Movie'} ${year ? '• ' + year : ''}</p>
+                ${item.character ? `<p class="text-[10px] text-red-400 font-bold truncate mt-1">As ${item.character}</p>` : ''}
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+
+      } catch (err) {
+        console.error("Failed to load actor profile:", err);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', initActorPage);
+  </script>
+</body>
+</html>
