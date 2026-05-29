@@ -734,7 +734,7 @@
                                 </div>
                                 <!-- Massive wrapper to push YT UI off-screen -->
                                 <div id="trailer-wrapper-${item.id}" class="absolute top-1/2 left-1/2 w-[300%] h-[300%] -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0 opacity-0 transition-opacity duration-700" style="opacity: 0.01;">
-                                    <div id="trailer-container-${item.id}" class="w-full h-full pointer-events-none"></div>
+                                    <div id="trailer-player-${item.id}" class="w-full h-full pointer-events-none"></div>
                                 </div>
                             </div>
                             <div class="px-1 mt-2">
@@ -764,13 +764,14 @@
                         // Add Hover Trailer Logic (only on desktop/non-touch)
                         if (!('ontouchstart' in window)) {
                             let hoverTimer = null;
+                            let cardYtPlayer = null;
                             const trailerWrapper = card.querySelector(`#trailer-wrapper-${item.id}`);
-                            const trailerContainer = card.querySelector(`#trailer-container-${item.id}`);
+                            const trailerPlayerDiv = card.querySelector(`#trailer-player-${item.id}`);
                             const volIcon = card.querySelector(`#volIcon-${item.id}`);
 
                             card.addEventListener('mouseenter', () => {
                                 hoverTimer = setTimeout(async () => {
-                                    if (trailerContainer.innerHTML !== '') {
+                                    if (cardYtPlayer) {
                                         trailerWrapper.style.opacity = '1';
                                         volIcon.classList.remove('opacity-0');
                                         return;
@@ -781,20 +782,45 @@
                                         const vids = vidData.results || [];
                                         const trailer = vids.find(v => v.type === 'Trailer' && v.site === 'YouTube') || vids.find(v => v.site === 'YouTube');
                                         
-                                        if (trailer) {
-                                            trailerContainer.innerHTML = `
-                                                <iframe class="w-full h-full pointer-events-none" 
-                                                    src="https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&loop=1&playlist=${trailer.key}" 
-                                                    frameborder="0" allow="autoplay; encrypted-media">
-                                                </iframe>
-                                            `;
-                                            // Delay reveal to hide initial YT flash
-                                            setTimeout(() => {
-                                                if (card.matches(':hover')) {
-                                                    trailerWrapper.style.opacity = '1';
-                                                    volIcon.classList.remove('opacity-0');
+                                        if (trailer && ytApiReady) {
+                                            cardYtPlayer = new YT.Player(`trailer-player-${item.id}`, {
+                                                videoId: trailer.key,
+                                                playerVars: {
+                                                    autoplay: 1,
+                                                    mute: 1,
+                                                    controls: 0,
+                                                    showinfo: 0,
+                                                    rel: 0,
+                                                    iv_load_policy: 3,
+                                                    loop: 1,
+                                                    playlist: trailer.key,
+                                                    playsinline: 1,
+                                                    disablekb: 1,
+                                                    fs: 0,
+                                                    modestbranding: 1,
+                                                    vq: 'small' // 360p
+                                                },
+                                                events: {
+                                                    onReady: (event) => {
+                                                        event.target.setPlaybackQuality('small');
+                                                        event.target.mute();
+                                                        event.target.playVideo();
+                                                    },
+                                                    onStateChange: (event) => {
+                                                        if (event.data === YT.PlayerState.PLAYING) {
+                                                            event.target.setPlaybackQuality('small');
+                                                            // Hide UI by waiting a moment after it starts playing
+                                                            setTimeout(() => {
+                                                                if (card.matches(':hover') && trailerWrapper) {
+                                                                    trailerWrapper.style.transition = 'opacity 0.5s ease';
+                                                                    trailerWrapper.style.opacity = '1';
+                                                                    volIcon.classList.remove('opacity-0');
+                                                                }
+                                                            }, 1000);
+                                                        }
+                                                    }
                                                 }
-                                            }, 2000);
+                                            });
                                         }
                                     } catch (e) { console.error(e); }
                                 }, 500); // 500ms hover intent delay
@@ -802,14 +828,16 @@
 
                             card.addEventListener('mouseleave', () => {
                                 clearTimeout(hoverTimer);
+                                trailerWrapper.style.transition = 'none';
                                 trailerWrapper.style.opacity = '0.01';
                                 volIcon.classList.add('opacity-0');
                                 // Destroy iframe after fade out to save resources
-                                setTimeout(() => {
-                                    if (!card.matches(':hover')) {
-                                        trailerContainer.innerHTML = '';
-                                    }
-                                }, 700);
+                                if (cardYtPlayer && typeof cardYtPlayer.destroy === 'function') {
+                                    cardYtPlayer.destroy();
+                                    cardYtPlayer = null;
+                                    // re-create the div for next time since destroy() removes the iframe
+                                    trailerWrapper.innerHTML = `<div id="trailer-player-${item.id}" class="w-full h-full pointer-events-none"></div>`;
+                                }
                             });
                         }
 
