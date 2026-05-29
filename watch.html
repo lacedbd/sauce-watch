@@ -792,6 +792,8 @@
                                         if (trailer && ytApiReady) {
                                             cardYtPlayer = new YT.Player(`trailer-player-${item.id}`, {
                                                 videoId: trailer.key,
+                                                width: '100%',
+                                                height: '100%',
                                                 playerVars: {
                                                     autoplay: 1,
                                                     mute: 1,
@@ -817,14 +819,15 @@
                                                         if (event.data === YT.PlayerState.PLAYING) {
                                                             event.target.setPlaybackQuality('small');
                                                             // Hide UI by waiting a moment after it starts playing
+                                                            // We wait 3.0s to ensure the YouTube play button and title completely fade out
                                                             setTimeout(() => {
                                                                 if (card.matches(':hover') && trailerWrapper) {
-                                                                    trailerWrapper.style.transition = 'opacity 0.5s ease';
+                                                                    trailerWrapper.style.transition = 'opacity 0.8s ease';
                                                                     trailerWrapper.style.opacity = '1';
                                                                     volIcon.classList.remove('opacity-0');
                                                                     spinner.classList.add('opacity-0');
                                                                 }
-                                                            }, 1000);
+                                                            }, 3000);
                                                         }
                                                     }
                                                 }
