@@ -66,30 +66,36 @@
             pointer-events: none;
         }
         /* ── Hero focus/idle mode ── */
-        /* When trailer is playing and mouse is idle, collapse UI to let you watch */
         #heroContent {
-            transition: transform 0.6s ease, opacity 0.6s ease;
+            transition: all 0.6s ease;
         }
         #heroTitle {
-            transition: font-size 0.6s ease, transform 0.6s ease;
             display: block;
+            transition: font-size 0.5s ease;
         }
-        #heroMeta, #heroOverview, #heroButtons {
-            transition: opacity 0.5s ease, transform 0.5s ease, max-height 0.5s ease;
+        #heroMeta, #heroOverview {
+            transition: opacity 0.4s ease, max-height 0.5s ease, margin 0.4s ease;
             overflow: hidden;
         }
-        /* focused = trailer playing, mouse idle — collapse details */
+        #heroButtons {
+            transition: opacity 0.4s ease;
+        }
+        /* focused = trailer playing, mouse idle — hide meta + desc, keep title + buttons */
         #heroSection.trailer-focused #heroMeta,
-        #heroSection.trailer-focused #heroOverview,
-        #heroSection.trailer-focused #heroButtons {
+        #heroSection.trailer-focused #heroOverview {
             opacity: 0;
-            transform: translateY(12px);
-            max-height: 0;
+            max-height: 0 !important;
+            margin: 0 !important;
             pointer-events: none;
         }
+        /* Title shrinks to match Cineby's idle state */
         #heroSection.trailer-focused #heroTitle {
-            font-size: clamp(1.5rem, 3vw, 2.5rem) !important;
-            letter-spacing: -0.02em;
+            font-size: clamp(1.8rem, 3.5vw, 3rem) !important;
+            letter-spacing: -0.01em;
+        }
+        /* Buttons stay fully visible in idle state */
+        #heroSection.trailer-focused #heroButtons {
+            opacity: 1;
         }
     </style>
     <!-- AD TAGS PLACEHOLDER (Paste Adsterra tags here to monetize the player page) -->
