@@ -49,6 +49,93 @@
       backdrop-filter: blur(16px);
       border-bottom-color: rgba(255,255,255,0.06);
     }
+    @media (max-width: 767px) {
+      #mainNav { padding: 14px 20px; }
+    }
+
+    /* ── Mobile Bottom Nav ── */
+    #mobileNav {
+      display: none;
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 300;
+      background: rgba(15, 15, 18, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 999px;
+      padding: 10px 8px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+      gap: 4px;
+    }
+    @media (max-width: 767px) {
+      #mobileNav { display: flex; }
+    }
+    .mob-nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: none;
+      background: transparent;
+      color: rgba(255,255,255,0.45);
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease;
+      font-family: 'Inter', sans-serif;
+      white-space: nowrap;
+    }
+    .mob-nav-btn:hover, .mob-nav-btn.active {
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+    }
+    .mob-nav-btn.active .mob-nav-dot {
+      width: 4px; height: 4px;
+      background: #e11d48;
+      border-radius: 99px;
+      display: block;
+    }
+    .mob-nav-btn:not(.active) .mob-nav-dot { display: none; }
+    .mob-nav-btn i { font-size: 18px; line-height: 1; }
+    .mob-nav-btn span { font-size: 10px; font-weight: 600; line-height: 1; }
+
+    /* ── Mobile Search Overlay ── */
+    #mobileSearchOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 400;
+      background: rgba(9,9,11,0.97);
+      backdrop-filter: blur(16px);
+      padding: 24px 20px;
+      flex-direction: column;
+      gap: 16px;
+    }
+    #mobileSearchOverlay.open { display: flex; }
+    #mobileSearchInput {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      padding: 14px 18px;
+      color: #fff;
+      font-size: 16px;
+      font-family: 'Inter', sans-serif;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    #mobileSearchInput:focus { border-color: rgba(255,255,255,0.3); }
+    #mobileSearchResults { overflow-y: auto; flex: 1; }
+
+    /* Add safe-area padding at bottom on mobile so content isn't hidden behind nav */
+    @media (max-width: 767px) {
+      main { padding-bottom: 96px; }
+      footer { padding-bottom: 100px; }
+    }
 
     /* ── Hero ── */
     #heroSection {
@@ -590,6 +677,48 @@
   </div>
 </footer>
 
+<!-- ══════════════════ MOBILE BOTTOM NAV ══════════════════ -->
+<nav id="mobileNav" role="navigation" aria-label="Mobile navigation">
+  <button class="mob-nav-btn active" id="mobHome" onclick="mobilNavSelect(this,'home')">
+    <i class="fas fa-home"></i>
+    <span>Home</span>
+    <div class="mob-nav-dot"></div>
+  </button>
+  <button class="mob-nav-btn" id="mobSearch" onclick="openMobileSearch()">
+    <i class="fas fa-search"></i>
+    <span>Search</span>
+    <div class="mob-nav-dot"></div>
+  </button>
+  <button class="mob-nav-btn" id="mobMovies" onclick="mobilNavSelect(this,'movies')">
+    <i class="fas fa-film"></i>
+    <span>Movies</span>
+    <div class="mob-nav-dot"></div>
+  </button>
+  <button class="mob-nav-btn" id="mobTV" onclick="mobilNavSelect(this,'tv')">
+    <i class="fas fa-tv"></i>
+    <span>TV Shows</span>
+    <div class="mob-nav-dot"></div>
+  </button>
+  <button class="mob-nav-btn" id="mobTrending" onclick="mobilNavSelect(this,'trending')">
+    <i class="fas fa-fire"></i>
+    <span>Trending</span>
+    <div class="mob-nav-dot"></div>
+  </button>
+</nav>
+
+<!-- ══════════════════ MOBILE SEARCH OVERLAY ══════════════════ -->
+<div id="mobileSearchOverlay" role="dialog" aria-modal="true" aria-label="Search">
+  <div class="flex items-center gap-3">
+    <button onclick="closeMobileSearch()" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/15 transition text-white flex-shrink-0">
+      <i class="fas fa-arrow-left text-sm"></i>
+    </button>
+    <input id="mobileSearchInput" type="search" placeholder="Search movies, shows, actors..." autofocus>
+  </div>
+  <div id="mobileSearchResults" class="divide-y divide-zinc-900 rounded-xl overflow-hidden">
+    <p class="text-zinc-600 text-sm p-4 text-center">Start typing to search</p>
+  </div>
+</div>
+
 <script>
   // ── Constants ──────────────────────────────────────────────────
   const API = "607bf14c16a8ab16f9ed61e6ba5920a7";
@@ -1066,6 +1195,113 @@
     await loadContinueWatching();
     fetchAll();
   });
+
+  // ── Mobile Bottom Nav ──────────────────────────────────────────
+  function mobilNavSelect(btn, section) {
+    document.querySelectorAll('.mob-nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    if (section === 'home') {
+      hideSearch();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (section === 'movies') {
+      hideSearch();
+      const el = document.getElementById('popularMoviesGrid');
+      if (el) el.closest('section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (section === 'tv') {
+      hideSearch();
+      const el = document.getElementById('tvShowsGrid');
+      if (el) el.closest('section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (section === 'trending') {
+      hideSearch();
+      const el = document.getElementById('trendingGrid');
+      if (el) el.closest('section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  // ── Mobile Search Overlay ──────────────────────────────────────
+  const mobileOverlay = document.getElementById('mobileSearchOverlay');
+  const mobileSearchInput = document.getElementById('mobileSearchInput');
+  const mobileSearchResults = document.getElementById('mobileSearchResults');
+  let mobileSearchDebounce;
+
+  function openMobileSearch() {
+    mobileOverlay.classList.add('open');
+    setTimeout(() => mobileSearchInput.focus(), 100);
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeMobileSearch() {
+    mobileOverlay.classList.remove('open');
+    mobileSearchInput.value = '';
+    mobileSearchResults.innerHTML = '<p class="text-zinc-600 text-sm p-4 text-center">Start typing to search</p>';
+    document.body.style.overflow = '';
+    // Reactivate Home in bottom nav
+    document.querySelectorAll('.mob-nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('mobHome').classList.add('active');
+  }
+
+  mobileSearchInput.addEventListener('input', e => {
+    const q = e.target.value.trim();
+    clearTimeout(mobileSearchDebounce);
+    if (!q) {
+      mobileSearchResults.innerHTML = '<p class="text-zinc-600 text-sm p-4 text-center">Start typing to search</p>';
+      return;
+    }
+    mobileSearchResults.innerHTML = '<p class="text-zinc-600 text-sm p-4 text-center animate-pulse">Searching...</p>';
+
+    mobileSearchDebounce = setTimeout(async () => {
+      try {
+        const [mRes, tRes] = await Promise.all([
+          fetch(`${T}/search/movie?api_key=${API}&query=${encodeURIComponent(q)}`),
+          fetch(`${T}/search/tv?api_key=${API}&query=${encodeURIComponent(q)}`)
+        ]);
+        const mData = await mRes.json();
+        const tData = await tRes.json();
+
+        const movies = (mData.results || []).map(i => ({ ...i, _type: 'movie', _sim: getSimilarity(q, i.title || '') }));
+        const shows  = (tData.results  || []).map(i => ({ ...i, _type: 'tv',    _sim: getSimilarity(q, i.name  || '') }));
+        const all = [...movies, ...shows]
+          .filter(i => i.poster_path)
+          .sort((a, b) => Math.abs(b._sim - a._sim) > 0.05 ? b._sim - a._sim : b.popularity - a.popularity)
+          .slice(0, 10);
+
+        if (!all.length) {
+          mobileSearchResults.innerHTML = '<p class="text-zinc-600 text-sm p-4 text-center">No results found.</p>';
+          return;
+        }
+
+        mobileSearchResults.innerHTML = '';
+        all.forEach(item => {
+          const link = document.createElement('a');
+          link.href = `watch.html?id=${item.id}&type=${item._type}`;
+          link.className = 'flex items-center gap-4 p-4 hover:bg-white/5 active:bg-white/10 transition-colors cursor-pointer rounded-xl';
+          const year = ((item.release_date || item.first_air_date || '')).split('-')[0];
+          const rating = (item.vote_average || 0).toFixed(1);
+          link.innerHTML = `
+            <img src="${W500}${item.poster_path}" alt="" class="w-12 h-16 rounded-lg object-cover shadow-md flex-shrink-0">
+            <div class="min-w-0 flex-1">
+              <p class="font-bold text-sm text-white truncate">${item.title || item.name}</p>
+              <p class="text-xs text-zinc-500 mt-1 font-medium">${item._type === 'tv' ? 'TV Show' : 'Movie'} ${year ? '· ' + year : ''}</p>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="text-yellow-400 text-xs font-bold flex items-center gap-1"><i class="fas fa-star text-[9px]"></i> ${rating}</span>
+                <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f345.svg" class="w-3 h-3" alt="RT">
+                <span class="text-white text-xs font-bold">${Math.round((item.vote_average||0)*10)}%</span>
+              </div>
+            </div>
+            <i class="fas fa-play text-zinc-700 text-xs flex-shrink-0"></i>
+          `;
+          mobileSearchResults.appendChild(link);
+        });
+      } catch(e) {}
+    }, 280);
+  });
+
+  // Close overlay with Escape key
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && mobileOverlay.classList.contains('open')) closeMobileSearch();
+  });
 </script>
+
 </body>
 </html>
