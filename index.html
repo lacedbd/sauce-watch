@@ -150,7 +150,17 @@
       inset: 0;
       background-size: cover;
       background-position: center top;
-      transition: opacity 0.8s ease;
+      transition: opacity 1.2s ease;
+      z-index: 2;
+    }
+    #heroTrailerWrapper {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      z-index: 1;
+      transition: opacity 1.2s ease;
     }
     .hero-vignette {
       position: absolute; inset: 0;
@@ -158,6 +168,7 @@
         linear-gradient(to top,    #09090b 0%,  rgba(9,9,11,0.5) 35%, transparent 70%),
         linear-gradient(to right,  #09090b 0%,  rgba(9,9,11,0.3) 25%, transparent 60%),
         linear-gradient(to bottom, rgba(9,9,11,0.7) 0%, transparent 15%);
+      z-index: 5;
     }
 
     /* Slideshow progress dots */
@@ -166,6 +177,14 @@
       transition: all 0.4s ease; cursor: pointer;
     }
     .slide-dot.active { width: 24px; background: #fff; }
+
+    /* Switcher Thumbnails */
+    .hero-thumb-card {
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    .hero-thumb-card:hover {
+      transform: translateY(-2px) scale(1.03);
+    }
 
     /* ── Section Titles ── */
     .section-header {
@@ -434,10 +453,16 @@
 <!-- ══════════════════ HERO ══════════════════ -->
 <section id="heroSection">
   <div id="heroBg"></div>
+  
+  <!-- Immersive background video trailer player -->
+  <div id="heroTrailerWrapper" class="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0 opacity-0 transition-opacity duration-1000">
+    <div id="hero-youtube-player" class="absolute top-1/2 left-1/2 w-[300vh] h-[150vh] md:w-[150vw] md:h-[150vh] -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+  </div>
+
   <div class="hero-vignette z-10"></div>
 
   <!-- Hero Content -->
-  <div id="heroContent" class="absolute bottom-0 left-0 right-0 z-20 px-6 md:px-14 pb-10 md:pb-14 opacity-0 transition-opacity duration-700">
+  <div id="heroContent" class="absolute bottom-0 left-0 right-0 z-20 px-6 md:px-14 pb-16 md:pb-24 opacity-0 transition-opacity duration-700">
     <!-- Slideshow dots top-right -->
     <div class="absolute top-[-48px] right-6 md:right-14 flex items-center gap-2" id="heroDots"></div>
 
@@ -467,14 +492,17 @@
          class="inline-flex items-center gap-2 bg-white hover:bg-zinc-100 text-black font-bold px-7 py-3 rounded-full transition-all hover:scale-105 active:scale-95 shadow-2xl text-sm md:text-base">
         <i class="fas fa-play text-xs"></i> Watch Now
       </a>
-      <button class="inline-flex items-center gap-2 bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-500 text-white font-bold px-6 py-3 rounded-full transition-all text-sm md:text-base">
+      <button id="heroMyListBtn" class="inline-flex items-center gap-2 bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-500 text-white font-bold px-6 py-3 rounded-full transition-all text-sm md:text-base">
         <i class="fas fa-plus"></i> My List
+      </button>
+      <button id="heroVolumeBtn" class="hidden w-10 h-10 md:w-12 md:h-12 rounded-full bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-500 text-white flex items-center justify-center transition-all shadow-2xl">
+        <i id="heroVolumeIcon" class="fas fa-volume-mute"></i>
       </button>
     </div>
   </div>
 
   <!-- Thumbnail Slideshow Strip -->
-  <div id="heroThumbnails" class="absolute bottom-0 right-0 hidden md:flex gap-3 z-20 px-6 md:px-14 pb-8 justify-end max-w-[50%]"></div>
+  <div id="heroThumbnails" class="absolute bottom-4 left-6 right-6 md:left-auto md:right-0 flex gap-2 sm:gap-3 z-20 md:px-14 pb-4 md:pb-8 justify-start md:justify-end overflow-x-auto scrollbar-hide max-w-full md:max-w-[60%]"></div>
 </section>
 
 <!-- ══════════════════ MAIN SECTIONS ══════════════════ -->
@@ -551,6 +579,14 @@
       <h2 class="section-title">Continue Watching <span class="text-zinc-600 font-normal text-sm">— pick up where you left off</span></h2>
     </div>
     <div id="continueGrid" class="slider-row scrollbar-hide"></div>
+  </section>
+
+  <!-- ── My List ── -->
+  <section id="myListSection" class="hidden pt-8 pb-2 px-6 md:px-14 fade-in-up">
+    <div class="section-header">
+      <h2 class="section-title"><i class="fas fa-bookmark text-rose-500 text-base"></i> My List</h2>
+    </div>
+    <div id="myListGrid" class="slider-row scrollbar-hide text-zinc-400"></div>
   </section>
 
   <!-- ── Trending Today ── -->
@@ -764,6 +800,17 @@
   let slideshowMovies = [];
   let slideIndex = 0;
   let slideTimer;
+  let progress = 0;
+  let progressTimer = null;
+  const SLIDE_DURATION = 8000; // 8 seconds transition
+  const TICK_INTERVAL = 100;   // 100ms timer ticks
+
+  // Hero YouTube background player variables
+  let heroTrailerPlayer = null;
+  let heroYtApiReady = false;
+  let pendingHeroTrailerKey = '';
+  let activeTrailerFetchId = 0;
+  let heroIsMuted = true;
 
   // ── Navbar scroll effect ───────────────────────────────────────
   window.addEventListener('scroll', () => {
@@ -900,7 +947,9 @@
     });
   }
 
-  // ── Hero Slideshow ────────────────────────────────────────────
+  // ── Hero Slideshow & Trailer Autoplay ────────────────────────
+  let activeTrailerFetchId = 0;
+
   async function initHero() {
     const res = await fetch(`${T}/trending/movie/day?api_key=${API}`);
     const data = await res.json();
@@ -908,11 +957,8 @@
     if (slideshowMovies.length === 0) return;
     renderDots();
     renderThumbs();
+    initHeroVolumeToggle();
     await setHeroSlide(0);
-    slideTimer = setInterval(() => {
-      slideIndex = (slideIndex + 1) % slideshowMovies.length;
-      setHeroSlide(slideIndex);
-    }, 8000);
   }
 
   function renderDots() {
@@ -921,7 +967,10 @@
     slideshowMovies.forEach((_, i) => {
       const dot = document.createElement('div');
       dot.className = `slide-dot ${i === 0 ? 'active' : ''}`;
-      dot.addEventListener('click', () => { clearInterval(slideTimer); slideIndex = i; setHeroSlide(i); slideTimer = setInterval(() => { slideIndex = (slideIndex + 1) % slideshowMovies.length; setHeroSlide(slideIndex); }, 8000); });
+      dot.addEventListener('click', () => {
+        slideIndex = i;
+        setHeroSlide(i);
+      });
       dots.appendChild(dot);
     });
   }
@@ -933,19 +982,251 @@
   function renderThumbs() {
     const container = document.getElementById('heroThumbnails');
     container.innerHTML = '';
-    slideshowMovies.slice(0, 4).forEach((m, i) => {
+    slideshowMovies.forEach((m, i) => {
       const th = document.createElement('div');
-      th.className = `flex-shrink-0 w-[110px] h-[62px] rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${i === 0 ? 'border-white' : 'border-transparent opacity-60 hover:opacity-100 hover:border-white/40'}`;
-      th.innerHTML = `<img src="${W780}${m.backdrop_path}" class="w-full h-full object-cover">`;
-      th.addEventListener('click', () => { clearInterval(slideTimer); slideIndex = i; setHeroSlide(i); slideTimer = setInterval(() => { slideIndex = (slideIndex + 1) % slideshowMovies.length; setHeroSlide(slideIndex); }, 8000); });
+      th.className = `hero-thumb-card relative flex-shrink-0 w-[85px] h-[48px] sm:w-[100px] sm:h-[56px] md:w-[120px] md:h-[68px] rounded-lg overflow-hidden cursor-pointer border-2 transition-all duration-300 ${i === 0 ? 'border-white scale-105 shadow-lg' : 'border-white/10 opacity-60 hover:opacity-100 hover:border-white/30'}`;
+      th.innerHTML = `
+        <img src="${W780}${m.backdrop_path}" class="w-full h-full object-cover">
+        <div class="absolute inset-0 bg-black/20 hover:bg-black/0 transition-colors"></div>
+        <div class="thumb-progress-bar absolute bottom-0 left-0 h-[3px] bg-rose-600 w-0 transition-all duration-100 ease-linear"></div>
+      `;
+      th.addEventListener('click', () => {
+        slideIndex = i;
+        setHeroSlide(i);
+      });
       container.appendChild(th);
     });
   }
 
   function updateThumbs() {
-    const thumbs = document.querySelectorAll('#heroThumbnails > div');
+    const thumbs = document.querySelectorAll('#heroThumbnails > .hero-thumb-card');
     thumbs.forEach((t, i) => {
-      t.className = `flex-shrink-0 w-[110px] h-[62px] rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${i === slideIndex ? 'border-white' : 'border-transparent opacity-60 hover:opacity-100 hover:border-white/40'}`;
+      const isCurrent = i === slideIndex;
+      t.className = `hero-thumb-card relative flex-shrink-0 w-[85px] h-[48px] sm:w-[100px] sm:h-[56px] md:w-[120px] md:h-[68px] rounded-lg overflow-hidden cursor-pointer border-2 transition-all duration-300 ${isCurrent ? 'border-white scale-105 shadow-lg' : 'border-white/10 opacity-60 hover:opacity-100 hover:border-white/30'}`;
+      
+      const progressB = t.querySelector('.thumb-progress-bar');
+      if (progressB && !isCurrent) {
+        progressB.style.width = '0%';
+      }
+    });
+  }
+
+  function startSlideshow() {
+    clearInterval(progressTimer);
+    progress = 0;
+    updateProgressBar(0);
+    progressTimer = setInterval(() => {
+      progress += (TICK_INTERVAL / SLIDE_DURATION) * 100;
+      if (progress >= 100) {
+        progress = 0;
+        slideIndex = (slideIndex + 1) % slideshowMovies.length;
+        setHeroSlide(slideIndex);
+      } else {
+        updateProgressBar(progress);
+      }
+    }, TICK_INTERVAL);
+  }
+
+  function updateProgressBar(pct) {
+    const thumbs = document.querySelectorAll('#heroThumbnails > .hero-thumb-card');
+    if (thumbs[slideIndex]) {
+      const progressB = thumbs[slideIndex].querySelector('.thumb-progress-bar');
+      if (progressB) {
+        progressB.style.width = `${pct}%`;
+      }
+    }
+  }
+
+  // Load YouTube IFrame Player API script dynamically
+  if (!window.YT) {
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+  }
+
+  window.onYouTubeIframeAPIReady = () => {
+    heroYtApiReady = true;
+    if (pendingHeroTrailerKey) {
+      setupHeroTrailer(pendingHeroTrailerKey);
+    }
+  };
+
+  function setupHeroTrailer(videoKey) {
+    const playerDiv = document.getElementById('hero-youtube-player');
+    if (!playerDiv) return;
+    
+    if (heroTrailerPlayer && typeof heroTrailerPlayer.loadVideoById === 'function') {
+      try {
+        const wrapper = document.getElementById('heroTrailerWrapper');
+        wrapper.style.opacity = '0';
+        document.getElementById('heroBg').style.opacity = '1';
+        
+        heroTrailerPlayer.cueVideoById({
+          videoId: videoKey,
+          startSeconds: 0,
+          suggestedQuality: 'large'
+        });
+        if (heroIsMuted) {
+          heroTrailerPlayer.mute();
+        } else {
+          heroTrailerPlayer.unMute();
+        }
+        heroTrailerPlayer.playVideo();
+        return;
+      } catch (e) {
+        console.error("Error recycling hero player:", e);
+      }
+    }
+
+    try {
+      heroTrailerPlayer = new YT.Player('hero-youtube-player', {
+        width: '1920',
+        height: '1080',
+        videoId: videoKey,
+        playerVars: {
+          autoplay: 1,
+          mute: heroIsMuted ? 1 : 0,
+          controls: 0,
+          showinfo: 0,
+          rel: 0,
+          iv_load_policy: 3,
+          loop: 1,
+          playlist: videoKey,
+          playsinline: 1,
+          disablekb: 1,
+          fs: 0,
+          modestbranding: 1,
+          vq: 'large'
+        },
+        events: {
+          onReady: (event) => {
+            event.target.setPlaybackQuality('large');
+            if (heroIsMuted) {
+              event.target.mute();
+            } else {
+              event.target.unMute();
+            }
+            event.target.playVideo();
+          },
+          onStateChange: (event) => {
+            const wrapper = document.getElementById('heroTrailerWrapper');
+            const bg = document.getElementById('heroBg');
+            
+            if (event.data === YT.PlayerState.PLAYING) {
+              event.target.setPlaybackQuality('large');
+              setTimeout(() => {
+                if (wrapper && heroTrailerPlayer && heroTrailerPlayer.getVideoData()?.video_id === videoKey) {
+                  wrapper.style.opacity = '1';
+                  bg.style.opacity = '0.05';
+                  const volBtn = document.getElementById('heroVolumeBtn');
+                  if (volBtn) volBtn.classList.remove('hidden');
+                }
+              }, 3500);
+            }
+          }
+        }
+      });
+    } catch(e) {
+      console.error("Error creating hero player:", e);
+    }
+  }
+
+  function initHeroVolumeToggle() {
+    const volBtn = document.getElementById('heroVolumeBtn');
+    if (!volBtn) return;
+    
+    volBtn.addEventListener('click', () => {
+      if (!heroTrailerPlayer || typeof heroTrailerPlayer.isMuted !== 'function') return;
+      
+      heroIsMuted = !heroIsMuted;
+      const icon = document.getElementById('heroVolumeIcon');
+      
+      if (heroIsMuted) {
+        heroTrailerPlayer.mute();
+        icon.className = 'fas fa-volume-mute';
+        volBtn.classList.remove('bg-rose-600', 'border-rose-500');
+        volBtn.classList.add('bg-zinc-800/80', 'border-zinc-700');
+      } else {
+        heroTrailerPlayer.unMute();
+        icon.className = 'fas fa-volume-up';
+        volBtn.classList.remove('bg-zinc-800/80', 'border-zinc-700');
+        volBtn.classList.add('bg-rose-600', 'border-rose-500');
+      }
+    });
+  }
+
+  // ── Local Storage My List Helpers ─────────────────────────────
+  function getMyList() {
+    return JSON.parse(localStorage.getItem('sw_mylist') || '[]');
+  }
+
+  function saveMyList(list) {
+    localStorage.setItem('sw_mylist', JSON.stringify(list));
+  }
+
+  function updateMyListButton(movie) {
+    const btn = document.getElementById('heroMyListBtn');
+    if (!btn) return;
+    
+    const list = getMyList();
+    const isAdded = list.some(item => item.id === movie.id);
+    
+    if (isAdded) {
+      btn.innerHTML = `<i class="fas fa-check text-rose-500"></i> Added to List`;
+      btn.className = "inline-flex items-center gap-2 bg-rose-950/20 border border-rose-500/30 text-white font-bold px-6 py-3 rounded-full transition-all text-sm md:text-base";
+    } else {
+      btn.innerHTML = `<i class="fas fa-plus"></i> My List`;
+      btn.className = "inline-flex items-center gap-2 bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-500 text-white font-bold px-6 py-3 rounded-full transition-all text-sm md:text-base";
+    }
+  }
+
+  function loadMyList() {
+    const list = getMyList();
+    const section = document.getElementById('myListSection');
+    const grid = document.getElementById('myListGrid');
+    if (!section || !grid) return;
+    
+    if (!list.length) {
+      section.classList.add('hidden');
+      return;
+    }
+    
+    section.classList.remove('hidden');
+    grid.innerHTML = '';
+    
+    list.forEach(item => {
+      const card = createCard(item, item.type || 'movie');
+      if (card) grid.appendChild(card);
+    });
+  }
+
+  function initMyListHandlers() {
+    const myListBtn = document.getElementById('heroMyListBtn');
+    if (!myListBtn) return;
+    
+    myListBtn.addEventListener('click', () => {
+      const movie = slideshowMovies[slideIndex];
+      if (!movie) return;
+      
+      let list = getMyList();
+      const idx = list.findIndex(item => item.id === movie.id);
+      
+      if (idx > -1) {
+        list.splice(idx, 1);
+      } else {
+        list.push({
+          id: movie.id,
+          type: movie.media_type || 'movie',
+          title: movie.title || movie.name,
+          poster_path: movie.poster_path,
+          vote_average: movie.vote_average
+        });
+      }
+      
+      saveMyList(list);
+      updateMyListButton(movie);
+      loadMyList();
     });
   }
 
@@ -953,6 +1234,19 @@
     const movie = slideshowMovies[idx];
     const heroContent = document.getElementById('heroContent');
     heroContent.style.opacity = '0';
+
+    if (heroTrailerPlayer && typeof heroTrailerPlayer.pauseVideo === 'function') {
+      try {
+        heroTrailerPlayer.pauseVideo();
+      } catch(e) {}
+    }
+    
+    const wrapper = document.getElementById('heroTrailerWrapper');
+    if (wrapper) wrapper.style.opacity = '0';
+    document.getElementById('heroBg').style.opacity = '1';
+    
+    const volBtn = document.getElementById('heroVolumeBtn');
+    if (volBtn) volBtn.classList.add('hidden');
 
     await new Promise(r => setTimeout(r, 200));
 
@@ -986,9 +1280,36 @@
     document.getElementById('heroOverview').textContent = movie.overview || '';
     document.getElementById('heroPlayBtn').href = `watch.html?id=${movie.id}&type=${movie.media_type || 'movie'}`;
 
+    updateMyListButton(movie);
+
     heroContent.style.opacity = '1';
     updateDots();
     updateThumbs();
+
+    startSlideshow();
+
+    const fetchId = ++activeTrailerFetchId;
+    try {
+      const vidRes = await fetch(`${T}/${movie.media_type || 'movie'}/${movie.id}/videos?api_key=${API}`);
+      const vidData = await vidRes.json();
+      
+      if (fetchId !== activeTrailerFetchId) return;
+
+      const videos = vidData.results || [];
+      const trailer = videos.find(v => v.site === 'YouTube' && v.type === 'Trailer') ||
+                      videos.find(v => v.site === 'YouTube' && v.type === 'Teaser') ||
+                      videos.find(v => v.site === 'YouTube');
+      
+      if (trailer?.key) {
+        if (heroYtApiReady) {
+          setupHeroTrailer(trailer.key);
+        } else {
+          pendingHeroTrailerKey = trailer.key;
+        }
+      }
+    } catch(e) {
+      console.error("Error setting up hero trailer:", e);
+    }
   }
 
   // ── Continue Watching (localStorage) ─────────────────────────
@@ -1223,6 +1544,8 @@
     await loadGenres();
     await initHero();
     await loadContinueWatching();
+    loadMyList();
+    initMyListHandlers();
     fetchAll();
   });
 
