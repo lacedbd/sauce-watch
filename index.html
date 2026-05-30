@@ -1,745 +1,1071 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
-
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>sauce.watch - Premium Streaming</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>sauce.watch — Stream Everything</title>
+  <meta name="description" content="sauce.watch — Your free streaming guide to every movie and TV show. Browse, search, and watch instantly.">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-          },
-          colors: {
-            brand: {
-              red: '#E50914',
-              redHover: '#F40612',
-            },
-            bg: {
-              100: '#171717',
-              200: '#111111',
-              300: '#0A0A0A',
-            }
-          }
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
         }
       }
-    }
+    };
   </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
+    * { box-sizing: border-box; }
     body {
-      background-color: #0A0A0A;
+      background: #09090b;
       color: #fafafa;
       -webkit-font-smoothing: antialiased;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
     }
 
-    .hero-vignette {
-      background: linear-gradient(to top, #0A0A0A 0%, rgba(10, 10, 10, 0.4) 40%, transparent 100%),
-                  linear-gradient(to right, #0A0A0A 0%, rgba(10, 10, 10, 0.4) 30%, transparent 100%);
-    }
-
+    /* ── Scrollbar ── */
     .scrollbar-hide::-webkit-scrollbar { display: none; }
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 99px; }
 
-    /* Netflix-style Card Scaling */
-    .netflix-card {
+    /* ── Navbar ── */
+    #mainNav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      padding: 18px 40px;
+      transition: background 0.3s, backdrop-filter 0.3s, border-color 0.3s;
+      background: transparent;
+      border-bottom: 1px solid transparent;
+    }
+    #mainNav.scrolled {
+      background: rgba(9,9,11,0.92);
+      backdrop-filter: blur(16px);
+      border-bottom-color: rgba(255,255,255,0.06);
+    }
+
+    /* ── Hero ── */
+    #heroSection {
       position: relative;
-      border-radius: 8px;
+      height: 92vh;
+      min-height: 560px;
       overflow: hidden;
-      aspect-ratio: 2/3;
-      transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), z-index 0.4s;
+      background: #09090b;
     }
-    .netflix-card:hover {
-      transform: scale(1.08);
-      z-index: 50;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-      border-radius: 12px;
-    }
-    .netflix-card > img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .netflix-card .overlay {
+    #heroBg {
       position: absolute;
       inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 40%, transparent 100%);
+      background-size: cover;
+      background-position: center top;
+      transition: opacity 0.8s ease;
+    }
+    .hero-vignette {
+      position: absolute; inset: 0;
+      background:
+        linear-gradient(to top,    #09090b 0%,  rgba(9,9,11,0.5) 35%, transparent 70%),
+        linear-gradient(to right,  #09090b 0%,  rgba(9,9,11,0.3) 25%, transparent 60%),
+        linear-gradient(to bottom, rgba(9,9,11,0.7) 0%, transparent 15%);
+    }
+
+    /* Slideshow progress dots */
+    .slide-dot {
+      width: 4px; height: 4px; border-radius: 99px; background: rgba(255,255,255,0.3);
+      transition: all 0.4s ease; cursor: pointer;
+    }
+    .slide-dot.active { width: 24px; background: #fff; }
+
+    /* ── Section Titles ── */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .section-title {
+      font-size: 1.2rem; font-weight: 700; color: #fafafa;
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    /* ── Movie Poster Cards ── */
+    .poster-card {
+      position: relative;
+      flex-shrink: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      background: #18181b;
+      aspect-ratio: 2/3;
+      transition: transform 0.35s cubic-bezier(0.25,1,0.5,1),
+                  box-shadow 0.35s ease;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .poster-card:hover {
+      transform: scale(1.06) translateY(-4px);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+      border-color: rgba(255,255,255,0.15);
+      z-index: 10;
+    }
+    .poster-card img {
+      width: 100%; height: 100%; object-fit: cover;
+      display: block;
+    }
+    .poster-card .card-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.3) 35%, transparent 60%);
       opacity: 0;
       transition: opacity 0.3s ease;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      padding: 16px;
+      display: flex; flex-direction: column; justify-content: flex-end;
+      padding: 14px;
     }
-    .netflix-card:hover .overlay { opacity: 1; }
+    .poster-card:hover .card-overlay { opacity: 1; }
 
-    /* Wide Collection Banner */
-    .collection-banner {
+    /* Ratings Badge */
+    .rating-badge {
+      position: absolute; top: 8px; right: 8px;
+      background: rgba(0,0,0,0.82);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 5px 8px;
+      display: grid;
+      grid-template-columns: 13px auto;
+      gap: 5px;
+      row-gap: 3px;
+      align-items: center;
+    }
+
+    /* ── Backdrop (Wide) Card ── */
+    .backdrop-card {
+      position: relative;
+      flex-shrink: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      background: #18181b;
       aspect-ratio: 16/9;
+      transition: transform 0.35s cubic-bezier(0.25,1,0.5,1), box-shadow 0.35s ease;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .backdrop-card:hover {
+      transform: scale(1.04) translateY(-4px);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+      border-color: rgba(255,255,255,0.15);
+      z-index: 10;
+    }
+    .backdrop-card img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .backdrop-card .prog-bar {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 3px; background: rgba(255,255,255,0.15);
+    }
+    .backdrop-card .prog-bar span {
+      display: block; height: 100%; background: #e11d48;
+      border-radius: 0 2px 2px 0;
+    }
+
+    /* ── Genre Cards ── */
+    .genre-card {
+      flex-shrink: 0;
       border-radius: 12px;
       overflow: hidden;
       position: relative;
-      transition: transform 0.4s ease;
       cursor: pointer;
-    }
-    .collection-banner:hover {
-      transform: scale(1.03);
-      box-shadow: 0 10px 30px rgba(229, 9, 20, 0.2);
-    }
-    .collection-banner img {
-      width: 100%; height: 100%; object-fit: cover;
-    }
-
-    /* Glass Genre Cards */
-    .genre-card {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border-radius: 12px;
-      padding: 24px;
-      text-align: center;
-      transition: all 0.3s ease;
-      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      height: 90px;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid rgba(255,255,255,0.06);
     }
     .genre-card:hover {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(255, 255, 255, 0.3);
-      transform: translateY(-4px);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      transform: translateY(-4px) scale(1.03);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+      border-color: rgba(255,255,255,0.2);
     }
 
-    /* Skeleton loader */
+    /* ── Provider ── */
+    .provider-card {
+      flex-shrink: 0;
+      width: 80px; height: 80px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      padding: 12px;
+      cursor: pointer;
+      transition: border-color 0.25s ease, background 0.25s ease, transform 0.25s ease;
+    }
+    .provider-card:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.25);
+      transform: scale(1.08);
+    }
+    .provider-card img { width: 100%; height: 100%; object-fit: contain; border-radius: 8px; }
+
+    /* ── Skeleton ── */
     .skeleton {
-      background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%);
-      background-size: 200% 100%; animation: shimmer 1.5s infinite;
-      border-radius: 8px; aspect-ratio: 2/3;
+      background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.03) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 10px;
+      aspect-ratio: 2/3;
     }
-    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-    /* Nav transition */
-    .nav-scrolled {
-      background: rgba(10, 10, 10, 0.95);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(255,255,255,0.05);
+    /* ── Search Input Focus ── */
+    #searchInput:focus { outline: none; }
+
+    /* ── "NEW" badge ── */
+    .badge-new {
+      position: absolute; top: 8px; left: 8px;
+      background: #e11d48; color: #fff; font-size: 9px; font-weight: 800;
+      letter-spacing: 0.08em; padding: 2px 6px; border-radius: 4px;
     }
 
-    /* Slider Container */
+    /* ── Slider Row ── */
     .slider-row {
       display: flex;
-      gap: 16px;
+      gap: 14px;
       overflow-x: auto;
-      padding-bottom: 32px;
-      padding-top: 16px;
-      scroll-behavior: smooth;
+      padding-bottom: 20px;
+      -webkit-overflow-scrolling: touch;
     }
-    .slider-row > * { flex-shrink: 0; width: 160px; }
-    @media (min-width: 768px) { .slider-row > * { width: 200px; } }
-    @media (min-width: 1280px) { .slider-row > * { width: 240px; } }
 
-    /* Hero Buttons */
-    .btn-primary {
-      background: #fafafa; color: #0A0A0A;
-      padding: 12px 32px; border-radius: 6px; font-weight: 700; font-size: 1.1rem;
-      transition: all 0.2s; display: inline-flex; items-center; gap: 8px;
+    /* Card widths: narrow on mobile, wider on desktop */
+    .poster-card, .skeleton-item {
+      width: 140px;
     }
-    .btn-primary:hover { background: rgba(255,255,255,0.75); }
-    
-    .btn-secondary {
-      background: rgba(109, 109, 110, 0.7); color: #fff;
-      padding: 12px 32px; border-radius: 6px; font-weight: 700; font-size: 1.1rem;
-      transition: all 0.2s; display: inline-flex; items-center; gap: 8px;
+    @media (min-width: 640px) { .poster-card, .skeleton-item { width: 168px; } }
+    @media (min-width: 1024px) { .poster-card, .skeleton-item { width: 192px; } }
+    @media (min-width: 1280px) { .poster-card, .skeleton-item { width: 208px; } }
+
+    .backdrop-card {
+      width: 280px;
     }
-    .btn-secondary:hover { background: rgba(109, 109, 110, 0.4); }
+    @media (min-width: 768px) { .backdrop-card { width: 330px; } }
+    @media (min-width: 1024px) { .backdrop-card { width: 380px; } }
+
+    .genre-card {
+      width: 150px;
+    }
+    @media (min-width: 768px) { .genre-card { width: 180px; } }
+
+    /* ── Fade-in-up for rows ── */
+    .fade-in-up {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .fade-in-up.visible {
+      opacity: 1; transform: none;
+    }
   </style>
 </head>
+<body>
 
-<body class="overflow-x-hidden">
-
-  <!-- ── NAVBAR ──────────────────────────────────────────── -->
-  <header id="mainNav" class="fixed top-0 z-[200] w-full transition-all duration-300 py-5 px-6 md:px-12 bg-transparent">
-    <div class="flex items-center justify-between">
-      
-      <!-- Left: Logo & Links -->
-      <div class="flex items-center gap-10">
-        <a href="index.html" class="flex items-center text-3xl font-black tracking-tighter text-brand-red">
-          sauce<span class="text-white">.watch</span>
-        </a>
-        <nav class="hidden lg:flex items-center gap-6 text-sm font-medium text-gray-300">
-          <a href="#" class="text-white font-bold hover:text-gray-300 transition-colors">Home</a>
-          <a href="#" class="hover:text-gray-300 transition-colors">Movies</a>
-          <a href="#" class="hover:text-gray-300 transition-colors">TV Shows</a>
-          <a href="#" class="hover:text-gray-300 transition-colors">Trending</a>
-          <a href="#" class="hover:text-gray-300 transition-colors">My List</a>
-        </nav>
-      </div>
-
-      <!-- Right: Search & Profile -->
-      <div class="flex items-center gap-6">
-        
-        <!-- Interactive Search -->
-        <div class="relative group">
-          <div class="flex items-center bg-transparent border border-transparent hover:border-white/20 hover:bg-black/50 focus-within:border-white/40 focus-within:bg-black/80 rounded-full px-3 py-1.5 transition-all w-8 focus-within:w-48 sm:focus-within:w-64 overflow-hidden">
-            <i class="fas fa-search text-white text-lg cursor-pointer mr-3"></i>
-            <input id="searchInput" type="text" placeholder="Titles, people, genres" class="bg-transparent text-sm text-white placeholder-gray-400 focus:outline-none w-full opacity-0 focus-within:opacity-100 transition-opacity" autocomplete="off" />
-          </div>
-
-          <!-- Search Dropdown -->
-          <div id="searchDropdown" class="hidden absolute top-full right-0 mt-3 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl z-[250] w-[280px] sm:w-[320px] md:w-[400px] overflow-hidden">
-            <div id="dropdownSuggestions" class="max-h-[350px] overflow-y-auto scrollbar-hide divide-y divide-zinc-800"></div>
-            <button id="seeMoreBtn" class="w-full py-3 bg-zinc-950 text-xs font-bold text-gray-300 hover:text-white hover:bg-zinc-800 transition-all">
-              See more results
-            </button>
-          </div>
-        </div>
-
-        <button class="text-white hover:text-gray-300 transition-colors"><i class="fas fa-bell text-xl"></i></button>
-        <button class="w-9 h-9 rounded bg-zinc-800 overflow-hidden border border-zinc-700 hover:border-white transition-all cursor-pointer">
-          <img src="https://ui-avatars.com/api/?name=User&background=111&color=fff" alt="Profile" class="w-full h-full object-cover">
-        </button>
+<!-- ══════════════════ NAVBAR ══════════════════ -->
+<nav id="mainNav">
+  <div class="flex items-center justify-between max-w-[1440px] mx-auto">
+    <!-- Left: Logo + Nav -->
+    <div class="flex items-center gap-8">
+      <a href="index.html" class="text-2xl font-black tracking-tighter text-white">
+        sauce<span class="text-zinc-500">.watch</span>
+      </a>
+      <div class="hidden md:flex items-center gap-6 text-sm font-medium text-zinc-400">
+        <a href="#" class="text-white font-semibold transition-colors">Home</a>
+        <a href="#" id="navMovies" class="hover:text-white transition-colors">Movies</a>
+        <a href="#" id="navTV" class="hover:text-white transition-colors">TV Shows</a>
+        <a href="#" id="navTrending" class="hover:text-white transition-colors">Trending</a>
+        <a href="#" id="navGenres" class="hover:text-white transition-colors">Genres</a>
       </div>
     </div>
-  </header>
 
-  <!-- ── FULL SCREEN HERO ────────────────────────────────── -->
-  <section id="heroSection" class="relative h-[90vh] md:h-[95vh] w-full bg-bg-300 transition-opacity duration-1000 opacity-0">
-    <!-- Background Image -->
-    <div id="heroBg" class="absolute inset-0 bg-cover bg-center bg-no-repeat w-full h-full"></div>
-    
-    <!-- Vignettes -->
-    <div class="absolute inset-0 hero-vignette z-10 pointer-events-none"></div>
-
-    <!-- Content -->
-    <div class="absolute bottom-[20%] left-0 w-full px-6 md:px-16 z-20 pointer-events-none">
-      <div class="max-w-2xl pointer-events-auto">
-        <!-- Logo or Text Title -->
-        <img id="heroTitleLogo" src="" class="hidden max-h-[160px] w-auto object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] mb-6" alt="Movie Logo">
-        <h1 id="heroTitleText" class="text-5xl md:text-8xl font-black text-white mb-4 drop-shadow-2xl leading-none tracking-tighter"></h1>
-
-        <div class="flex items-center gap-4 text-sm md:text-base font-medium text-white mb-6 drop-shadow-md">
-          <span class="text-green-500 font-bold">98% Match</span>
-          <span id="heroYear"></span>
-          <span class="border border-white/40 px-1 rounded text-xs text-white/80">HD</span>
-          <span id="heroRating" class="flex items-center gap-1"><i class="fas fa-star text-yellow-400 text-[10px]"></i> <span></span></span>
+    <!-- Right: Search + Notifications + Profile -->
+    <div class="flex items-center gap-4">
+      <!-- Search -->
+      <div class="relative" id="searchWrapper">
+        <div class="flex items-center gap-2 bg-zinc-900/80 border border-zinc-800 rounded-full px-4 py-2 focus-within:border-zinc-600 focus-within:bg-zinc-900 transition-all w-44 sm:w-56 md:w-64">
+          <i class="fas fa-search text-zinc-500 text-sm"></i>
+          <input id="searchInput" type="text" placeholder="Search movies, shows..."
+            class="bg-transparent text-sm text-white placeholder-zinc-600 w-full focus:outline-none"
+            autocomplete="off" />
         </div>
-
-        <p id="heroOverview" class="text-base md:text-lg text-white/90 mb-8 leading-snug line-clamp-3 drop-shadow-md max-w-xl font-medium"></p>
-        
-        <div class="flex gap-4">
-          <a id="heroPlayBtn" href="#" class="btn-primary">
-            <i class="fas fa-play"></i> Play
-          </a>
-          <button class="btn-secondary">
-            <i class="fas fa-info-circle"></i> More Info
+        <!-- Dropdown -->
+        <div id="searchDropdown" class="hidden absolute top-full right-0 mt-2 w-[320px] md:w-[420px] bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl z-[300] overflow-hidden">
+          <div id="dropdownSuggestions" class="max-h-[400px] overflow-y-auto divide-y divide-zinc-900"></div>
+          <button id="seeMoreBtn" class="w-full py-3 text-center text-xs font-bold text-zinc-500 hover:text-white hover:bg-white/5 transition-all">
+            View all results
           </button>
         </div>
       </div>
+
+      <button class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-all">
+        <i class="fas fa-bell text-base"></i>
+      </button>
+      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-red-500 to-rose-800 flex items-center justify-center font-bold text-sm cursor-pointer select-none">S</div>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════ HERO ══════════════════ -->
+<section id="heroSection">
+  <div id="heroBg"></div>
+  <div class="hero-vignette z-10"></div>
+
+  <!-- Hero Content -->
+  <div id="heroContent" class="absolute bottom-0 left-0 right-0 z-20 px-6 md:px-14 pb-10 md:pb-14 opacity-0 transition-opacity duration-700">
+    <!-- Slideshow dots top-right -->
+    <div class="absolute top-[-48px] right-6 md:right-14 flex items-center gap-2" id="heroDots"></div>
+
+    <!-- Movie Logo or Title -->
+    <div class="mb-3">
+      <img id="heroLogo" src="" alt="" class="hidden max-h-[60px] md:max-h-[120px] w-auto object-contain drop-shadow-2xl">
+      <h1 id="heroTitle" class="text-4xl md:text-7xl font-black tracking-tighter text-white leading-none drop-shadow-2xl"></h1>
+    </div>
+
+    <!-- Metadata -->
+    <div class="flex flex-wrap items-center gap-3 text-sm text-zinc-300 font-medium mb-4">
+      <span id="heroType" class="bg-white/10 border border-white/15 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md"></span>
+      <span class="flex items-center gap-1 text-yellow-400 font-bold"><i class="fas fa-star text-[11px]"></i><span id="heroRating"></span></span>
+      <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f345.svg" class="w-4 h-4" alt="RT"><span id="heroRt" class="font-bold text-white"></span><span class="text-zinc-300 font-normal">%</span>
+      <span class="text-zinc-600">•</span>
+      <span id="heroYear" class="text-zinc-300"></span>
+      <span class="text-zinc-600">•</span>
+      <span id="heroGenres" class="text-zinc-300"></span>
+    </div>
+
+    <!-- Overview -->
+    <p id="heroOverview" class="text-sm md:text-base text-zinc-300 leading-relaxed max-w-xl mb-6 line-clamp-3"></p>
+
+    <!-- Buttons -->
+    <div class="flex items-center gap-3 flex-wrap">
+      <a id="heroPlayBtn" href="#"
+         class="inline-flex items-center gap-2 bg-white hover:bg-zinc-100 text-black font-bold px-7 py-3 rounded-full transition-all hover:scale-105 active:scale-95 shadow-2xl text-sm md:text-base">
+        <i class="fas fa-play text-xs"></i> Watch Now
+      </a>
+      <button class="inline-flex items-center gap-2 bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-500 text-white font-bold px-6 py-3 rounded-full transition-all text-sm md:text-base">
+        <i class="fas fa-plus"></i> My List
+      </button>
+    </div>
+  </div>
+
+  <!-- Thumbnail Slideshow Strip -->
+  <div id="heroThumbnails" class="absolute bottom-0 right-0 hidden md:flex gap-3 z-20 px-6 md:px-14 pb-8 justify-end max-w-[50%]"></div>
+</section>
+
+<!-- ══════════════════ MAIN SECTIONS ══════════════════ -->
+<main id="mainSectionsContainer">
+
+  <!-- Search Results (hidden by default) -->
+  <section id="searchResultsSection" class="hidden py-28 px-6 md:px-14 min-h-screen">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div>
+        <h2 class="text-3xl font-black text-white">Search Results</h2>
+        <p id="searchCount" class="text-zinc-500 text-sm mt-1 font-medium"></p>
+      </div>
+      <!-- Filters -->
+      <div class="flex flex-wrap gap-2">
+        <select id="filterType" class="bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 rounded-lg px-3 py-2 focus:outline-none focus:border-zinc-600 transition cursor-pointer">
+          <option value="all">Type: All</option>
+          <option value="movie">Movies</option>
+          <option value="tv">TV Shows</option>
+        </select>
+        <select id="filterGenre" class="bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 rounded-lg px-3 py-2 focus:outline-none focus:border-zinc-600 transition cursor-pointer">
+          <option value="all">Genre: All</option>
+        </select>
+        <select id="filterYear" class="bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 rounded-lg px-3 py-2 focus:outline-none focus:border-zinc-600 transition cursor-pointer">
+          <option value="all">Year: All</option>
+          <option>2026</option><option>2025</option><option>2024</option>
+          <option>2023</option><option>2022</option><option>2021</option>
+          <option>2020</option><option>2019</option><option>2018</option>
+        </select>
+        <select id="filterRating" class="bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 rounded-lg px-3 py-2 focus:outline-none focus:border-zinc-600 transition cursor-pointer">
+          <option value="all">Rating: All</option>
+          <option value="8">★ 8.0+</option>
+          <option value="7">★ 7.0+</option>
+          <option value="6">★ 6.0+</option>
+        </select>
+        <button id="resetFiltersBtn" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-sm font-bold px-4 py-2 rounded-lg transition-all">
+          <i class="fas fa-undo text-xs mr-1"></i> Reset
+        </button>
+      </div>
+    </div>
+    <div id="searchMoviesCategory" class="hidden mb-10">
+      <h3 class="text-base font-bold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2"><i class="fas fa-film text-rose-500"></i> Movies</h3>
+      <div id="searchMoviesGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"></div>
+    </div>
+    <div id="searchTVCategory" class="hidden mb-10">
+      <h3 class="text-base font-bold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2"><i class="fas fa-tv text-blue-500"></i> TV Shows</h3>
+      <div id="searchTVGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"></div>
+    </div>
+    <div id="searchNoResults" class="hidden text-center py-24">
+      <i class="fas fa-search text-5xl text-zinc-800 mb-4 block"></i>
+      <p class="text-zinc-600 text-lg">No results found.</p>
     </div>
   </section>
 
-  <!-- ── MAIN CONTENT WRAPPER ────────────────────────────── -->
-  <main id="mainSectionsContainer" class="relative z-30 -mt-24 pb-20 space-y-12 bg-bg-300">
-    
-    <!-- Search Results View (Hidden) -->
-    <div id="searchResultsSection" class="hidden px-6 md:px-16 pt-32 min-h-screen">
-      <h2 class="text-3xl font-black text-white mb-2">Search Results</h2>
-      <p id="searchCount" class="text-zinc-500 mb-8">Searching...</p>
-      
-      <!-- Movies -->
-      <div id="searchMoviesCategory" class="hidden mb-12">
-        <h3 class="text-xl font-bold text-white mb-4">Movies</h3>
-        <div id="searchMoviesGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"></div>
-      </div>
-      
-      <!-- TV Shows -->
-      <div id="searchTVCategory" class="hidden mb-12">
-        <h3 class="text-xl font-bold text-white mb-4">TV Shows</h3>
-        <div id="searchTVGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"></div>
-      </div>
-
-      <!-- No Results -->
-      <div id="searchNoResults" class="hidden text-center py-20">
-        <i class="fas fa-search text-5xl text-zinc-800 mb-4"></i>
-        <p class="text-zinc-500 text-lg">No matches found.</p>
-      </div>
+  <!-- ── Providers Carousel ── -->
+  <section class="pt-10 pb-2 px-6 md:px-14 fade-in-up">
+    <div class="section-header">
+      <span class="section-title text-zinc-400 text-sm font-semibold uppercase tracking-widest">Browse by Platform</span>
     </div>
+    <div class="flex gap-4 overflow-x-auto scrollbar-hide pb-3">
+      <div class="provider-card"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Netflix_2015_logo.svg/800px-Netflix_2015_logo.svg.png" alt="Netflix"></div>
+      <div class="provider-card"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Amazon_Prime_Video_logo.svg/800px-Amazon_Prime_Video_logo.svg.png" alt="Prime Video"></div>
+      <div class="provider-card"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/HBO_Max_Logo.svg/512px-HBO_Max_Logo.svg.png" alt="Max"></div>
+      <div class="provider-card"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Disney%2B_logo.svg/800px-Disney%2B_logo.svg.png" alt="Disney+"></div>
+      <div class="provider-card"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Apple_TV_Plus_Logo.svg/512px-Apple_TV_Plus_Logo.svg.png" alt="Apple TV+"></div>
+      <div class="provider-card"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Paramount_Plus_logo.svg/800px-Paramount_Plus_logo.svg.png" alt="Paramount+"></div>
+      <div class="provider-card"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Hulu_logo_%282014%29.svg/800px-Hulu_logo_%282014%29.svg.png" alt="Hulu"></div>
+      <div class="provider-card"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Crunchyroll_2023_logo.svg/512px-Crunchyroll_2023_logo.svg.png" alt="Crunchyroll"></div>
+    </div>
+  </section>
 
-    <!-- 1. Trending Today -->
-    <section class="pl-6 md:pl-16">
-      <h2 class="text-xl md:text-2xl font-bold text-white mb-2 flex items-center gap-2">
-        Trending Today <i class="fas fa-fire text-brand-red text-lg"></i>
+  <!-- ── Continue Watching (localStorage-driven) ── -->
+  <section id="continueSection" class="hidden pt-8 pb-2 px-6 md:px-14 fade-in-up">
+    <div class="section-header">
+      <h2 class="section-title">Continue Watching <span class="text-zinc-600 font-normal text-sm">— pick up where you left off</span></h2>
+    </div>
+    <div id="continueGrid" class="slider-row scrollbar-hide"></div>
+  </section>
+
+  <!-- ── Trending Today ── -->
+  <section class="pt-8 pb-2 px-6 md:px-14 fade-in-up">
+    <div class="section-header">
+      <h2 class="section-title">
+        <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse inline-block"></span>
+        Trending Today
       </h2>
-      <div id="trendingGrid" class="slider-row">
-        <!-- Skeletons -->
-        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
-        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
-      </div>
-    </section>
-
-    <!-- 2. Continue Watching (Mocked local data logic) -->
-    <section class="pl-6 md:pl-16">
-      <h2 class="text-xl md:text-2xl font-bold text-white mb-2">Continue Watching for You</h2>
-      <div id="continueWatchingGrid" class="slider-row">
-        <!-- Injected via JS -->
-      </div>
-    </section>
-
-    <!-- 3. Popular Movies -->
-    <section class="pl-6 md:pl-16">
-      <h2 class="text-xl md:text-2xl font-bold text-white mb-2">Popular Movies</h2>
-      <div id="popularMoviesGrid" class="slider-row">
-        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
-      </div>
-    </section>
-
-    <!-- 4. Top Rated (Grid style) -->
-    <section class="px-6 md:px-16">
-      <h2 class="text-xl md:text-2xl font-bold text-white mb-6">Top Rated Masterpieces</h2>
-      <div id="topRatedGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
-        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
-        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
-      </div>
-    </section>
-
-    <!-- 5. Cinematic Collections -->
-    <section class="px-6 md:px-16 pt-8">
-      <h2 class="text-xl md:text-2xl font-bold text-white mb-6">Featured Collections</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div class="collection-banner group">
-          <img src="https://image.tmdb.org/t/p/w780/xJHokMbljvjANC2Zp5mQ0gA2c7U.jpg" alt="Mind Bending">
-          <div class="absolute inset-0 bg-black/50 group-hover:bg-black/30 transition-all flex items-center justify-center p-6">
-            <h3 class="text-2xl font-black text-white text-center tracking-wide uppercase drop-shadow-lg">Mind-Bending<br>Thrillers</h3>
-          </div>
-        </div>
-        <div class="collection-banner group">
-          <img src="https://image.tmdb.org/t/p/w780/kXfqcdQKsToO0OUXHcrrNCHDBzO.jpg" alt="Award Winning">
-          <div class="absolute inset-0 bg-black/50 group-hover:bg-black/30 transition-all flex items-center justify-center p-6">
-            <h3 class="text-2xl font-black text-yellow-400 text-center tracking-wide uppercase drop-shadow-lg">Award-Winning<br>Dramas</h3>
-          </div>
-        </div>
-        <div class="collection-banner group hidden lg:block">
-          <img src="https://image.tmdb.org/t/p/w780/5YZbUmjbMa3ClvSW1Wj3D6XGolb.jpg" alt="Sci-Fi">
-          <div class="absolute inset-0 bg-black/50 group-hover:bg-black/30 transition-all flex items-center justify-center p-6">
-            <h3 class="text-2xl font-black text-blue-400 text-center tracking-wide uppercase drop-shadow-lg">Sci-Fi<br>Odysseys</h3>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 6. Recommended (Match %) -->
-    <section class="pl-6 md:pl-16 pt-8">
-      <h2 class="text-xl md:text-2xl font-bold text-white mb-2">Recommended For You</h2>
-      <div id="recommendedGrid" class="slider-row">
-        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
-      </div>
-    </section>
-
-    <!-- 7. Genres Glassmorphism Grid -->
-    <section class="px-6 md:px-16 pt-8">
-      <h2 class="text-xl md:text-2xl font-bold text-white mb-6">Explore by Genre</h2>
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <div class="genre-card"><i class="fas fa-fighter-jet text-3xl text-red-500 mb-3 block"></i><span class="font-bold text-white">Action</span></div>
-        <div class="genre-card"><i class="fas fa-rocket text-3xl text-blue-500 mb-3 block"></i><span class="font-bold text-white">Sci-Fi</span></div>
-        <div class="genre-card"><i class="fas fa-ghost text-3xl text-zinc-500 mb-3 block"></i><span class="font-bold text-white">Horror</span></div>
-        <div class="genre-card"><i class="fas fa-heart text-3xl text-pink-500 mb-3 block"></i><span class="font-bold text-white">Romance</span></div>
-        <div class="genre-card"><i class="fas fa-laugh-squint text-3xl text-yellow-500 mb-3 block"></i><span class="font-bold text-white">Comedy</span></div>
-        <div class="genre-card"><i class="fas fa-dragon text-3xl text-purple-500 mb-3 block"></i><span class="font-bold text-white">Fantasy</span></div>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- ── FOOTER ──────────────────────────────────────────── -->
-  <footer class="bg-bg-300 py-16 px-6 md:px-16 border-t border-white/5 relative z-30">
-    <div class="max-w-6xl mx-auto">
-      <div class="flex items-center gap-6 mb-8 text-zinc-400 text-2xl">
-        <a href="#" class="hover:text-white transition-colors"><i class="fab fa-facebook-f"></i></a>
-        <a href="#" class="hover:text-white transition-colors"><i class="fab fa-instagram"></i></a>
-        <a href="#" class="hover:text-white transition-colors"><i class="fab fa-twitter"></i></a>
-        <a href="#" class="hover:text-white transition-colors"><i class="fab fa-youtube"></i></a>
-      </div>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-zinc-500 mb-12">
-        <div class="flex flex-col gap-3">
-          <a href="#" class="hover:text-zinc-300 transition-colors">Audio Description</a>
-          <a href="#" class="hover:text-zinc-300 transition-colors">Investor Relations</a>
-          <a href="#" class="hover:text-zinc-300 transition-colors">Legal Notices</a>
-        </div>
-        <div class="flex flex-col gap-3">
-          <a href="#" class="hover:text-zinc-300 transition-colors">Help Center</a>
-          <a href="#" class="hover:text-zinc-300 transition-colors">Jobs</a>
-          <a href="#" class="hover:text-zinc-300 transition-colors">Cookie Preferences</a>
-        </div>
-        <div class="flex flex-col gap-3">
-          <a href="#" class="hover:text-zinc-300 transition-colors">Gift Cards</a>
-          <a href="#" class="hover:text-zinc-300 transition-colors">Terms of Use</a>
-          <a href="#" class="hover:text-zinc-300 transition-colors">Corporate Information</a>
-        </div>
-        <div class="flex flex-col gap-3">
-          <a href="#" class="hover:text-zinc-300 transition-colors">Media Center</a>
-          <a href="#" class="hover:text-zinc-300 transition-colors">Privacy</a>
-          <a href="#" class="hover:text-zinc-300 transition-colors">Contact Us</a>
-        </div>
-      </div>
-      <p class="text-xs text-zinc-600">sauce.watch © 2026. This platform is an aggregator and does not host content.</p>
+      <a href="#" class="text-xs font-semibold text-zinc-500 hover:text-white transition-colors">See all →</a>
     </div>
-  </footer>
+    <div id="trendingGrid" class="slider-row scrollbar-hide">
+      <div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>
+      <div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>
+      <div class="skeleton skeleton-item"></div>
+    </div>
+  </section>
 
-  <!-- ── SCRIPTS ─────────────────────────────────────────── -->
-  <script>
-    const TMDB_API_KEY = "607bf14c16a8ab16f9ed61e6ba5920a7";
-    const TMDB_BASE = "https://api.themoviedb.org/3";
-    const IMG_BASE = "https://image.tmdb.org/t/p/original";
-    const POSTER_BASE = "https://image.tmdb.org/t/p/w500";
+  <!-- ── Now Playing in Theaters ── -->
+  <section class="pt-8 pb-2 px-6 md:px-14 fade-in-up">
+    <div class="section-header">
+      <h2 class="section-title"><i class="fas fa-ticket-alt text-amber-500 text-base"></i> Now in Theaters</h2>
+      <a href="#" class="text-xs font-semibold text-zinc-500 hover:text-white transition-colors">See all →</a>
+    </div>
+    <div id="nowPlayingGrid" class="slider-row scrollbar-hide">
+      <div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>
+      <div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>
+    </div>
+  </section>
 
-    let genresMap = {};
+  <!-- ── Popular Movies ── -->
+  <section class="pt-8 pb-2 px-6 md:px-14 fade-in-up">
+    <div class="section-header">
+      <h2 class="section-title"><i class="fas fa-fire text-orange-500 text-base"></i> Popular Movies</h2>
+      <a href="#" class="text-xs font-semibold text-zinc-500 hover:text-white transition-colors">See all →</a>
+    </div>
+    <div id="popularMoviesGrid" class="slider-row scrollbar-hide">
+      <div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>
+      <div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>
+    </div>
+  </section>
 
-    // ── NAVBAR SCROLL EFFECT ─────────────────────────────
-    window.addEventListener('scroll', () => {
-      const nav = document.getElementById('mainNav');
-      if (window.scrollY > 50) {
-        nav.classList.add('nav-scrolled');
-      } else {
-        nav.classList.remove('nav-scrolled');
-      }
+  <!-- ── Popular TV Shows ── -->
+  <section class="pt-8 pb-2 px-6 md:px-14 fade-in-up">
+    <div class="section-header">
+      <h2 class="section-title"><i class="fas fa-tv text-blue-400 text-base"></i> Popular TV Shows</h2>
+      <a href="#" class="text-xs font-semibold text-zinc-500 hover:text-white transition-colors">See all →</a>
+    </div>
+    <div id="tvShowsGrid" class="slider-row scrollbar-hide">
+      <div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>
+      <div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>
+    </div>
+  </section>
+
+  <!-- ── Genres ── -->
+  <section class="pt-8 pb-2 px-6 md:px-14 fade-in-up">
+    <div class="section-header">
+      <h2 class="section-title">Explore Genres</h2>
+    </div>
+    <div class="slider-row scrollbar-hide" id="genresRow">
+      <!-- Injected by JS -->
+    </div>
+  </section>
+
+  <!-- ── Top Rated ── -->
+  <section class="pt-8 pb-2 px-6 md:px-14 fade-in-up">
+    <div class="section-header">
+      <h2 class="section-title"><i class="fas fa-crown text-yellow-500 text-base"></i> Top Rated of All Time</h2>
+      <a href="#" class="text-xs font-semibold text-zinc-500 hover:text-white transition-colors">See all →</a>
+    </div>
+    <div id="topRatedGrid" class="slider-row scrollbar-hide">
+      <div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>
+      <div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>
+    </div>
+  </section>
+
+  <!-- ── Latest Releases ── -->
+  <section class="pt-8 pb-2 px-6 md:px-14 fade-in-up">
+    <div class="section-header">
+      <h2 class="section-title"><i class="fas fa-bolt text-violet-400 text-base"></i> Latest Releases</h2>
+      <a href="#" class="text-xs font-semibold text-zinc-500 hover:text-white transition-colors">See all →</a>
+    </div>
+    <div id="latestGrid" class="slider-row scrollbar-hide">
+      <div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>
+      <div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>
+    </div>
+  </section>
+
+  <!-- ── Netflix Originals ── -->
+  <section class="pt-8 pb-2 px-6 md:px-14 fade-in-up">
+    <div class="section-header">
+      <h2 class="section-title" style="color:#e50914">
+        <svg height="18" viewBox="0 0 111 30" xmlns="http://www.w3.org/2000/svg" fill="#e50914"><path d="M105.062 14.28L111 30c-1.75-.25-3.499-.563-5.28-.845l-3.345-8.686-3.437 7.969c-1.687-.282-3.344-.376-5.031-.595l6.031-13.75L94.468 0h5.063l3.062 7.874L105.875 0h5.124l-5.937 14.28zM90.47 0h-4.594v27.25c1.5.094 3.062.156 4.594.343V0zm-8.937 26.937c-4.187-.281-8.375-.53-12.594-.625V0h4.687v22.25c2.655.094 5.28.312 7.907.405v4.282zM64.375 10.656H57.78V0h-4.687v29.812h4.687V14.937h6.594v14.5h4.688V0H64.375v10.656zM44.188 6.5h-5.5c.687 3.594 1.375 7.095 2.062 10.562L36.001 0h-6.156L42.561 30c-1.75-.218-3.5-.405-5.25-.594-1.313-7.063-2.625-14.218-3.938-21.312C31.688 14.062 30.001 20.03 28.314 26l-5.406-.75L34.283 0H28.44c-1.5 5.75-3.094 11.468-4.594 17.218C22.44 11.44 21.001 5.75 19.533 0h-5.25L26.064 30c-1.686-.22-3.375-.407-5.094-.594L17.439 17l-3.25 11.875-5.156-.47L0 0h4.875c1.375 7 2.812 14 4.187 21C10.5 14 11.938 7 13.376 0H19l3 12.25L25 0h4.875L19.187 30l5.25.563L26.031 23l5.782.75.656 3.874 5.282.563L44.188 6.5z"/></svg>
+        Originals
+      </h2>
+    </div>
+    <div id="netflixGrid" class="slider-row scrollbar-hide">
+      <div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>
+      <div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>
+    </div>
+  </section>
+
+  <!-- ── Disney+ Shows ── -->
+  <section class="pt-8 pb-14 px-6 md:px-14 fade-in-up">
+    <div class="section-header">
+      <h2 class="section-title" style="color:#113ccf">
+        <svg height="20" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg" fill="#113ccf"><text y="50" font-size="56" font-weight="900" font-family="Arial">Disney+</text></svg>
+      </h2>
+    </div>
+    <div id="disneyGrid" class="slider-row scrollbar-hide">
+      <div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>
+      <div class="skeleton skeleton-item"></div><div class="skeleton skeleton-item"></div>
+    </div>
+  </section>
+</main>
+
+<!-- ══════════════════ FOOTER ══════════════════ -->
+<footer class="bg-zinc-950 border-t border-white/5 px-6 md:px-14 py-14 text-zinc-500 text-sm">
+  <div class="max-w-[1440px] mx-auto">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+      <div>
+        <a href="index.html" class="text-xl font-black text-white tracking-tighter mb-4 block">sauce<span class="text-zinc-600">.watch</span></a>
+        <p class="text-xs leading-relaxed text-zinc-600">Your free streaming guide to every movie and TV show. Browse, discover and watch.</p>
+      </div>
+      <div>
+        <p class="font-semibold text-zinc-300 mb-3">Navigation</p>
+        <div class="flex flex-col gap-2 text-zinc-500">
+          <a href="#" class="hover:text-white transition-colors">Movies</a>
+          <a href="#" class="hover:text-white transition-colors">TV Shows</a>
+          <a href="#" class="hover:text-white transition-colors">Trending</a>
+          <a href="#" class="hover:text-white transition-colors">Genres</a>
+        </div>
+      </div>
+      <div>
+        <p class="font-semibold text-zinc-300 mb-3">Legal</p>
+        <div class="flex flex-col gap-2 text-zinc-500">
+          <a href="#" class="hover:text-white transition-colors">Terms of Service</a>
+          <a href="#" class="hover:text-white transition-colors">Privacy Policy</a>
+          <a href="#" class="hover:text-white transition-colors">DMCA</a>
+          <a href="#" class="hover:text-white transition-colors">Contact</a>
+        </div>
+      </div>
+      <div>
+        <p class="font-semibold text-zinc-300 mb-3">Follow Us</p>
+        <div class="flex gap-4 text-xl text-zinc-600">
+          <a href="#" class="hover:text-white transition-colors"><i class="fab fa-twitter"></i></a>
+          <a href="#" class="hover:text-white transition-colors"><i class="fab fa-instagram"></i></a>
+          <a href="#" class="hover:text-white transition-colors"><i class="fab fa-discord"></i></a>
+          <a href="#" class="hover:text-white transition-colors"><i class="fab fa-reddit"></i></a>
+        </div>
+      </div>
+    </div>
+    <div class="border-t border-white/5 pt-6 text-xs text-zinc-700">
+      <p>sauce.watch does not store any files. We only link to media hosted on third-party services.</p>
+      <p class="mt-1">© 2026 sauce.watch. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ── Constants ──────────────────────────────────────────────────
+  const API = "607bf14c16a8ab16f9ed61e6ba5920a7";
+  const T = "https://api.themoviedb.org/3";
+  const IMG = "https://image.tmdb.org/t/p/original";
+  const W500 = "https://image.tmdb.org/t/p/w500";
+  const W780 = "https://image.tmdb.org/t/p/w780";
+
+  let genresMap = {};
+  let slideshowMovies = [];
+  let slideIndex = 0;
+  let slideTimer;
+
+  // ── Navbar scroll effect ───────────────────────────────────────
+  window.addEventListener('scroll', () => {
+    document.getElementById('mainNav').classList.toggle('scrolled', window.scrollY > 40);
+  }, { passive: true });
+
+  // ── Intersection Observer for fade-in-up sections ─────────────
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.fade-in-up').forEach(el => observer.observe(el));
+
+  // ── Genres map ────────────────────────────────────────────────
+  async function loadGenres() {
+    try {
+      const [mRes, tRes] = await Promise.all([
+        fetch(`${T}/genre/movie/list?api_key=${API}`),
+        fetch(`${T}/genre/tv/list?api_key=${API}`)
+      ]);
+      const mData = await mRes.json();
+      const tData = await tRes.json();
+      [...(mData.genres || []), ...(tData.genres || [])].forEach(g => genresMap[g.id] = g.name);
+      populateGenreFilter();
+      renderGenreCards();
+    } catch(e) {}
+  }
+
+  function getGenresText(ids, max = 2) {
+    if (!ids || !ids.length) return '';
+    return ids.slice(0, max).map(id => genresMap[id]).filter(Boolean).join(' · ');
+  }
+
+  function populateGenreFilter() {
+    const sel = document.getElementById('filterGenre');
+    sel.innerHTML = '<option value="all">Genre: All</option>';
+    Object.entries(genresMap).forEach(([id, name]) => {
+      const o = document.createElement('option');
+      o.value = id; o.textContent = name; sel.appendChild(o);
     });
+  }
 
-    // ── INITIALIZER ──────────────────────────────────────
-    async function initCatalog() {
-      await fetchGenres();
-      await fetchHero();
-      await fetchContinueWatchingMock();
-      await fetchTrending();
-      await fetchPopular();
-      await fetchRecommended();
-      await fetchTopRated();
-    }
+  // ── Genre Cards ───────────────────────────────────────────────
+  const GENRE_META = [
+    { id: 28,    name: 'Action',    color: 'from-red-900 to-rose-950',      icon: '⚔️' },
+    { id: 35,    name: 'Comedy',    color: 'from-yellow-900 to-amber-950',   icon: '😂' },
+    { id: 27,    name: 'Horror',    color: 'from-zinc-800 to-zinc-950',      icon: '👻' },
+    { id: 878,   name: 'Sci-Fi',    color: 'from-blue-900 to-indigo-950',    icon: '🚀' },
+    { id: 18,    name: 'Drama',     color: 'from-purple-900 to-violet-950',  icon: '🎭' },
+    { id: 10749, name: 'Romance',   color: 'from-pink-900 to-rose-950',      icon: '❤️' },
+    { id: 12,    name: 'Adventure', color: 'from-emerald-900 to-teal-950',   icon: '🗺️' },
+    { id: 16,    name: 'Animation', color: 'from-cyan-900 to-sky-950',       icon: '🎨' },
+    { id: 53,    name: 'Thriller',  color: 'from-slate-800 to-slate-950',    icon: '🔪' },
+    { id: 14,    name: 'Fantasy',   color: 'from-fuchsia-900 to-purple-950', icon: '🐉' },
+  ];
 
-    async function fetchGenres() {
-      try {
-        const res = await fetch(`${TMDB_BASE}/genre/movie/list?api_key=${TMDB_API_KEY}`);
-        const data = await res.json();
-        if (data.genres) {
-          data.genres.forEach(g => { genresMap[g.id] = g.name; });
-        }
-      } catch (err) {}
-    }
-
-    function getGenresText(genreIds) {
-      if (!genreIds || genreIds.length === 0) return "Movies";
-      return genreIds.slice(0, 2).map(id => genresMap[id] || "").filter(Boolean).join(" • ");
-    }
-
-    // ── CREATE NETFLIX CARD ──────────────────────────────
-    function createNetflixCard(item, type = 'movie', style = 'default') {
+  function renderGenreCards() {
+    const row = document.getElementById('genresRow');
+    row.innerHTML = '';
+    GENRE_META.forEach(g => {
       const card = document.createElement('a');
-      card.href = `watch.html?id=${item.id}&type=${type}`;
-      card.className = "netflix-card";
-
-      const title = item.title || item.name;
-      const genresText = getGenresText(item.genre_ids);
-      const rating = item.vote_average ? item.vote_average.toFixed(1) : "0.0";
-      const year = (item.release_date || item.first_air_date || "").split('-')[0];
-
-      if (style === 'continue') {
-        // Continue Watching Card Style (Horizontal thumbnail + progress bar)
-        card.className = "netflix-card !aspect-video bg-zinc-900 border border-white/10";
-        const progress = Math.floor(Math.random() * 60) + 20; // Mock 20-80%
-        
-        card.innerHTML = `
-          <img src="https://image.tmdb.org/t/p/w500${item.backdrop_path || item.poster_path}" alt="${title}">
-          <div class="absolute bottom-0 left-0 w-full h-1 bg-zinc-800 z-10">
-            <div class="h-full bg-brand-red" style="width: ${progress}%"></div>
-          </div>
-          <div class="overlay !justify-center !items-center !bg-black/60">
-            <div class="w-12 h-12 rounded-full border-2 border-white flex items-center justify-center bg-black/40 hover:bg-white/20 transition-colors">
-              <i class="fas fa-play text-white text-lg ml-1"></i>
-            </div>
-            <h5 class="absolute top-3 left-3 font-bold text-sm text-white drop-shadow-md">${title}</h5>
-          </div>
-        `;
-      } else if (style === 'recommended') {
-        // Recommended Card Style (Green Match %)
-        const matchScore = Math.floor(Math.random() * 20) + 80; // 80-99%
-        card.innerHTML = `
-          <img src="${POSTER_BASE}${item.poster_path}" alt="${title}" loading="lazy">
-          <div class="absolute top-2 left-2 bg-black/70 backdrop-blur-md rounded px-1.5 py-0.5 z-10 border border-white/10">
-             <span class="text-green-500 font-black text-[10px] tracking-wide">${matchScore}% Match</span>
-          </div>
-          <div class="overlay">
-            <h5 class="font-bold text-sm text-white drop-shadow-md mb-1 leading-tight">${title}</h5>
-            <p class="text-[10px] text-zinc-300 font-medium">${year} <span class="mx-1 text-zinc-600">•</span> ${genresText}</p>
-          </div>
-        `;
-      } else {
-        // Default Poster Style
-        const rtScore = Math.round((item.vote_average || 0) * 10);
-        card.innerHTML = `
-          <img src="${POSTER_BASE}${item.poster_path}" alt="${title}" loading="lazy">
-          <div class="absolute top-2 right-2 bg-black/80 backdrop-blur-md rounded-lg px-2 py-1 flex flex-col gap-0.5 z-10 shadow-lg border border-white/10">
-              <div class="grid grid-cols-[12px_auto] items-center gap-1.5">
-                  <i class="fas fa-star text-yellow-400 text-[10px] justify-self-center"></i>
-                  <span class="text-yellow-400 text-[10px] font-bold">${rating}</span>
-              </div>
-              <div class="grid grid-cols-[12px_auto] items-center gap-1.5">
-                  <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f345.svg" class="w-[11px] h-[11px] justify-self-center drop-shadow-sm" alt="RT">
-                  <span class="text-white text-[10px] font-bold">${rtScore}%</span>
-              </div>
-          </div>
-          <div class="overlay">
-            <h5 class="font-bold text-sm text-white drop-shadow-md leading-tight mb-1">${title}</h5>
-            <div class="flex items-center gap-2">
-              <span class="bg-white/20 text-white text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/20">${year || 'NEW'}</span>
-              <span class="text-[10px] text-zinc-400 font-medium">${genresText.split(' • ')[0]}</span>
-            </div>
-          </div>
-        `;
-      }
-      return card;
-    }
-
-    // ── DATA FETCHING ────────────────────────────────────
-    
-    async function fetchHero() {
-      try {
-        const res = await fetch(`${TMDB_BASE}/movie/now_playing?api_key=${TMDB_API_KEY}`);
-        const data = await res.json();
-        if (data.results && data.results.length > 0) {
-          // Grab a high quality trending movie
-          const movie = data.results[0]; 
-          
-          const title = movie.title || movie.name;
-          document.getElementById('heroBg').style.backgroundImage = `url('${IMG_BASE}${movie.backdrop_path}')`;
-          
-          // Try to fetch English logo
-          const imgRes = await fetch(`${TMDB_BASE}/movie/${movie.id}/images?api_key=${TMDB_API_KEY}`);
-          const imgData = await imgRes.json();
-          const logo = (imgData.logos || []).find(l => l.iso_639_1 === 'en');
-          
-          if (logo && logo.file_path) {
-            const logoEl = document.getElementById('heroTitleLogo');
-            logoEl.src = `https://image.tmdb.org/t/p/w500${logo.file_path}`;
-            logoEl.alt = title;
-            logoEl.classList.remove('hidden');
-          } else {
-            document.getElementById('heroTitleText').innerText = title;
-          }
-
-          document.getElementById('heroOverview').innerText = movie.overview;
-          document.getElementById('heroYear').innerText = movie.release_date.split('-')[0];
-          document.getElementById('heroRating').querySelector('span').innerText = movie.vote_average.toFixed(1);
-          document.getElementById('heroPlayBtn').href = `watch.html?id=${movie.id}&type=movie`;
-          
-          document.getElementById('heroSection').classList.remove('opacity-0');
-        }
-      } catch (e) { console.error(e); }
-    }
-
-    async function fetchContinueWatchingMock() {
-      try {
-        const res = await fetch(`${TMDB_BASE}/movie/popular?api_key=${TMDB_API_KEY}&page=2`);
-        const data = await res.json();
-        const grid = document.getElementById('continueWatchingGrid');
-        grid.innerHTML = '';
-        (data.results || []).slice(0, 6).forEach(movie => {
-          if (movie.backdrop_path) grid.appendChild(createNetflixCard(movie, 'movie', 'continue'));
-        });
-      } catch (err) {}
-    }
-
-    async function fetchTrending() {
-      try {
-        const res = await fetch(`${TMDB_BASE}/trending/all/day?api_key=${TMDB_API_KEY}`);
-        const data = await res.json();
-        const grid = document.getElementById('trendingGrid');
-        grid.innerHTML = '';
-        (data.results || []).slice(0, 10).forEach(item => {
-          if (item.poster_path) grid.appendChild(createNetflixCard(item, item.media_type || 'movie'));
-        });
-      } catch (err) {}
-    }
-
-    async function fetchPopular() {
-      try {
-        const res = await fetch(`${TMDB_BASE}/movie/popular?api_key=${TMDB_API_KEY}`);
-        const data = await res.json();
-        const grid = document.getElementById('popularMoviesGrid');
-        grid.innerHTML = '';
-        (data.results || []).slice(0, 10).forEach(item => {
-          if (item.poster_path) grid.appendChild(createNetflixCard(item, 'movie'));
-        });
-      } catch (err) {}
-    }
-
-    async function fetchRecommended() {
-      try {
-        const res = await fetch(`${TMDB_BASE}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=878,28`);
-        const data = await res.json();
-        const grid = document.getElementById('recommendedGrid');
-        grid.innerHTML = '';
-        (data.results || []).slice(0, 10).forEach(item => {
-          if (item.poster_path) grid.appendChild(createNetflixCard(item, 'movie', 'recommended'));
-        });
-      } catch (err) {}
-    }
-
-    async function fetchTopRated() {
-      try {
-        const res = await fetch(`${TMDB_BASE}/movie/top_rated?api_key=${TMDB_API_KEY}`);
-        const data = await res.json();
-        const grid = document.getElementById('topRatedGrid');
-        grid.innerHTML = '';
-        (data.results || []).slice(0, 12).forEach(item => {
-          if (item.poster_path) grid.appendChild(createNetflixCard(item, 'movie'));
-        });
-      } catch (err) {}
-    }
-
-    // ── SEARCH LOGIC (Preserved from old implementation) ──
-    const searchInput = document.getElementById('searchInput');
-    const heroSection = document.getElementById('heroSection');
-    const mainSectionsContainer = document.getElementById('mainSectionsContainer');
-    const searchResultsSection = document.getElementById('searchResultsSection');
-    const searchMoviesGrid = document.getElementById('searchMoviesGrid');
-    const searchTVGrid = document.getElementById('searchTVGrid');
-    const searchMoviesCategory = document.getElementById('searchMoviesCategory');
-    const searchTVCategory = document.getElementById('searchTVCategory');
-    const searchNoResults = document.getElementById('searchNoResults');
-    const searchCount = document.getElementById('searchCount');
-    const searchDropdown = document.getElementById('searchDropdown');
-    const dropdownSuggestions = document.getElementById('dropdownSuggestions');
-
-    let searchResultsCache = [];
-    let debounceTimeout;
-
-    function getSimilarity(query, target) {
-      query = query.toLowerCase().trim(); target = target.toLowerCase().trim();
-      if (!query || !target) return 0;
-      if (query === target) return 1.0;
-      if (target.includes(query)) return 0.8 + (query.length / target.length) * 0.19;
-      const getBigrams = (str) => {
-        const bigrams = new Set();
-        for (let i = 0; i < str.length - 1; i++) bigrams.add(str.substring(i, i + 2));
-        return bigrams;
-      };
-      const b1 = getBigrams(query), b2 = getBigrams(target);
-      if (b1.size === 0 || b2.size === 0) return 0;
-      let intersect = 0;
-      for (let val of b1) if (b2.has(val)) intersect++;
-      return (2.0 * intersect) / (b1.size + b2.size);
-    }
-
-    searchInput.addEventListener('input', (e) => {
-      const query = e.target.value.trim();
-      clearTimeout(debounceTimeout);
-      if (!query) {
-        searchDropdown.classList.add('hidden');
-        searchResultsSection.classList.add('hidden');
-        heroSection.classList.remove('hidden');
-        mainSectionsContainer.classList.remove('hidden');
-        return;
-      }
-      searchDropdown.classList.remove('hidden');
-      dropdownSuggestions.innerHTML = '<p class="p-4 text-zinc-500 text-xs font-bold text-center">Searching database...</p>';
-
-      debounceTimeout = setTimeout(async () => {
-        try {
-          const [resMovie, resTV] = await Promise.all([
-            fetch(`${TMDB_BASE}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}`),
-            fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}`)
-          ]);
-          const dataMovie = await resMovie.json();
-          const dataTV = await resTV.json();
-
-          const movies = (dataMovie.results || []).map(item => ({ ...item, type: 'movie', similarity: getSimilarity(query, item.title || "") }));
-          const tvShows = (dataTV.results || []).map(item => ({ ...item, type: 'tv', similarity: getSimilarity(query, item.name || "") }));
-
-          const sortFn = (a, b) => Math.abs(b.similarity - a.similarity) > 0.05 ? b.similarity - a.similarity : b.popularity - a.popularity;
-          const combined = [...movies, ...tvShows].sort(sortFn).filter(item => item.poster_path);
-          const top5 = combined.slice(0, 6);
-
-          dropdownSuggestions.innerHTML = '';
-          if (top5.length === 0) {
-            dropdownSuggestions.innerHTML = '<p class="p-4 text-zinc-500 text-xs font-bold text-center">No matches found.</p>';
-            return;
-          }
-
-          top5.forEach(item => {
-            const row = document.createElement('a');
-            row.href = `watch.html?id=${item.id}&type=${item.type}`;
-            row.className = "flex items-center gap-4 p-3 hover:bg-white/5 transition cursor-pointer group";
-
-            const poster = item.poster_path ? `${POSTER_BASE}${item.poster_path}` : 'https://via.placeholder.com/92x138?text=No+Poster';
-            const year = (item.release_date || item.first_air_date || "").split('-')[0];
-
-            row.innerHTML = `
-                <img src="${poster}" class="w-12 h-16 object-cover rounded shadow-md group-hover:scale-105 transition-transform" />
-                <div class="flex-1 min-w-0">
-                    <h4 class="text-sm font-bold text-white truncate">${item.title || item.name}</h4>
-                    <p class="text-[10px] font-medium text-zinc-500 uppercase tracking-wide mt-1">${item.type === 'tv' ? 'TV Show' : 'Movie'} ${year ? '• '+year : ''}</p>
-                </div>
-                <i class="fas fa-play text-zinc-700 group-hover:text-white transition-colors mr-2"></i>
-            `;
-            dropdownSuggestions.appendChild(row);
-          });
-        } catch (err) {}
-      }, 300);
+      card.href = `#`;
+      card.className = `genre-card bg-gradient-to-br ${g.color}`;
+      card.innerHTML = `
+        <div class="text-center px-6">
+          <div class="text-3xl mb-2">${g.icon}</div>
+          <p class="text-white font-bold text-sm">${g.name}</p>
+        </div>
+      `;
+      // clicking a genre runs a search
+      card.addEventListener('click', (e) => {
+        e.preventDefault();
+        searchByGenre(g.id, g.name);
+      });
+      row.appendChild(card);
     });
+  }
 
-    searchInput.addEventListener('focus', () => { if (searchInput.value.trim()) searchDropdown.classList.remove('hidden'); });
-    document.addEventListener('click', (e) => { if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) searchDropdown.classList.add('hidden'); });
+  async function searchByGenre(genreId, genreName) {
+    showSearchResults(`${genreName} Movies & Shows`);
+    try {
+      const [mRes, tRes] = await Promise.all([
+        fetch(`${T}/discover/movie?api_key=${API}&with_genres=${genreId}&sort_by=popularity.desc`),
+        fetch(`${T}/discover/tv?api_key=${API}&with_genres=${genreId}&sort_by=popularity.desc`)
+      ]);
+      const mData = await mRes.json();
+      const tData = await tRes.json();
+      renderSearchResults(mData.results || [], tData.results || []);
+    } catch(e) {}
+  }
 
-    async function triggerFullSearch() {
-      const query = searchInput.value.trim();
-      if (!query) return;
-      searchDropdown.classList.add('hidden');
-      heroSection.classList.add('hidden');
-      mainSectionsContainer.classList.add('hidden');
-      searchResultsSection.classList.remove('hidden');
-      searchMoviesCategory.classList.add('hidden');
-      searchTVCategory.classList.add('hidden');
-      searchNoResults.classList.add('hidden');
-      document.getElementById('searchCount').innerText = "Searching database...";
+  // ── Card Factory ──────────────────────────────────────────────
+  function createCard(item, type, opts = {}) {
+    const link = document.createElement('a');
+    link.href = `watch.html?id=${item.id}&type=${type}`;
+    link.className = 'poster-card';
 
-      try {
-        const [resMovie, resTV] = await Promise.all([
-          fetch(`${TMDB_BASE}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}`),
-          fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}`)
-        ]);
-        const dataMovie = await resMovie.json();
-        const dataTV = await resTV.json();
+    const title = item.title || item.name || '';
+    const rating = item.vote_average ? item.vote_average.toFixed(1) : '0.0';
+    const rt = Math.round((item.vote_average || 0) * 10);
+    const year = ((item.release_date || item.first_air_date || '')).split('-')[0];
+    const genres = getGenresText(item.genre_ids);
+    const poster = item.poster_path ? `${W500}${item.poster_path}` : null;
 
-        const movies = (dataMovie.results || []).map(item => ({ ...item, type: 'movie', similarity: getSimilarity(query, item.title || "") }));
-        const tvShows = (dataTV.results || []).map(item => ({ ...item, type: 'tv', similarity: getSimilarity(query, item.name || "") }));
+    if (!poster) return null;
 
-        const sortFn = (a, b) => Math.abs(b.similarity - a.similarity) > 0.05 ? b.similarity - a.similarity : b.popularity - a.popularity;
-        searchResultsCache = [...movies, ...tvShows].sort(sortFn).filter(item => item.poster_path);
+    const typeTag = opts.showType ? `<span class="absolute top-2 left-2 ${type === 'tv' ? 'bg-blue-600' : 'bg-rose-600'} text-white text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md">${type === 'tv' ? 'TV' : 'Movie'}</span>` : '';
+    const newBadge = opts.isNew ? '<span class="badge-new">NEW</span>' : '';
 
-        const m = searchResultsCache.filter(item => item.type === 'movie');
-        const t = searchResultsCache.filter(item => item.type === 'tv');
+    link.innerHTML = `
+      <img src="${poster}" alt="${title}" loading="lazy">
+      ${typeTag}
+      ${newBadge}
+      <div class="rating-badge">
+        <i class="fas fa-star text-yellow-400 text-[9px] justify-self-center"></i>
+        <span class="text-yellow-400 text-[9px] font-bold">${rating}</span>
+        <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f345.svg" class="w-[10px] h-[10px] justify-self-center" alt="RT">
+        <span class="text-white text-[9px] font-bold">${rt}%</span>
+      </div>
+      <div class="card-overlay">
+        <h5 class="font-bold text-[13px] text-white leading-tight mb-1">${title}</h5>
+        <p class="text-[10px] text-zinc-400 font-medium">${year}${genres ? ' · ' + genres.split(' · ')[0] : ''}</p>
+        <div class="flex gap-2 mt-2">
+          <span class="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-white font-semibold flex items-center gap-1"><i class="fas fa-play text-[8px]"></i> Play</span>
+        </div>
+      </div>
+    `;
+    return link;
+  }
 
-        searchMoviesGrid.innerHTML = '';
-        searchTVGrid.innerHTML = '';
-        document.getElementById('searchCount').innerText = `${searchResultsCache.length} matches found`;
+  function populateGrid(id, items, type, opts = {}) {
+    const grid = document.getElementById(id);
+    if (!grid) return;
+    grid.innerHTML = '';
+    items.forEach(item => {
+      const card = createCard(item, type, opts);
+      if (card) grid.appendChild(card);
+    });
+  }
 
-        if (searchResultsCache.length === 0) {
-          searchNoResults.classList.remove('hidden');
-        } else {
-          if (m.length > 0) { searchMoviesCategory.classList.remove('hidden'); m.forEach(item => searchMoviesGrid.appendChild(createNetflixCard(item, 'movie'))); }
-          if (t.length > 0) { searchTVCategory.classList.remove('hidden'); t.forEach(item => searchTVGrid.appendChild(createNetflixCard(item, 'tv'))); }
-        }
-      } catch (err) {}
+  // ── Hero Slideshow ────────────────────────────────────────────
+  async function initHero() {
+    const res = await fetch(`${T}/trending/movie/day?api_key=${API}`);
+    const data = await res.json();
+    slideshowMovies = (data.results || []).filter(m => m.backdrop_path && m.poster_path).slice(0, 6);
+    if (slideshowMovies.length === 0) return;
+    renderDots();
+    renderThumbs();
+    await setHeroSlide(0);
+    slideTimer = setInterval(() => {
+      slideIndex = (slideIndex + 1) % slideshowMovies.length;
+      setHeroSlide(slideIndex);
+    }, 8000);
+  }
+
+  function renderDots() {
+    const dots = document.getElementById('heroDots');
+    dots.innerHTML = '';
+    slideshowMovies.forEach((_, i) => {
+      const dot = document.createElement('div');
+      dot.className = `slide-dot ${i === 0 ? 'active' : ''}`;
+      dot.addEventListener('click', () => { clearInterval(slideTimer); slideIndex = i; setHeroSlide(i); slideTimer = setInterval(() => { slideIndex = (slideIndex + 1) % slideshowMovies.length; setHeroSlide(slideIndex); }, 8000); });
+      dots.appendChild(dot);
+    });
+  }
+
+  function updateDots() {
+    document.querySelectorAll('.slide-dot').forEach((d, i) => d.classList.toggle('active', i === slideIndex));
+  }
+
+  function renderThumbs() {
+    const container = document.getElementById('heroThumbnails');
+    container.innerHTML = '';
+    slideshowMovies.slice(0, 4).forEach((m, i) => {
+      const th = document.createElement('div');
+      th.className = `flex-shrink-0 w-[110px] h-[62px] rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${i === 0 ? 'border-white' : 'border-transparent opacity-60 hover:opacity-100 hover:border-white/40'}`;
+      th.innerHTML = `<img src="${W780}${m.backdrop_path}" class="w-full h-full object-cover">`;
+      th.addEventListener('click', () => { clearInterval(slideTimer); slideIndex = i; setHeroSlide(i); slideTimer = setInterval(() => { slideIndex = (slideIndex + 1) % slideshowMovies.length; setHeroSlide(slideIndex); }, 8000); });
+      container.appendChild(th);
+    });
+  }
+
+  function updateThumbs() {
+    const thumbs = document.querySelectorAll('#heroThumbnails > div');
+    thumbs.forEach((t, i) => {
+      t.className = `flex-shrink-0 w-[110px] h-[62px] rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${i === slideIndex ? 'border-white' : 'border-transparent opacity-60 hover:opacity-100 hover:border-white/40'}`;
+    });
+  }
+
+  async function setHeroSlide(idx) {
+    const movie = slideshowMovies[idx];
+    const heroContent = document.getElementById('heroContent');
+    heroContent.style.opacity = '0';
+
+    await new Promise(r => setTimeout(r, 200));
+
+    // Background
+    document.getElementById('heroBg').style.backgroundImage = `url('${IMG}${movie.backdrop_path}')`;
+
+    // Logo
+    let logoUrl = null;
+    try {
+      const imgRes = await fetch(`${T}/movie/${movie.id}/images?api_key=${API}&include_image_language=en,null`);
+      const imgData = await imgRes.json();
+      const logo = (imgData.logos || []).find(l => l.iso_639_1 === 'en') || imgData.logos?.[0];
+      if (logo?.file_path) logoUrl = `${W500}${logo.file_path}`;
+    } catch(e) {}
+
+    const logoEl = document.getElementById('heroLogo');
+    const titleEl = document.getElementById('heroTitle');
+    if (logoUrl) {
+      logoEl.src = logoUrl; logoEl.alt = movie.title;
+      logoEl.classList.remove('hidden'); titleEl.textContent = '';
+    } else {
+      logoEl.classList.add('hidden'); titleEl.textContent = movie.title;
     }
 
-    searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); triggerFullSearch(); } });
-    document.getElementById('seeMoreBtn').addEventListener('click', (e) => { e.preventDefault(); triggerFullSearch(); });
+    // Meta
+    document.getElementById('heroRating').textContent = movie.vote_average?.toFixed(1) || '0.0';
+    document.getElementById('heroRt').textContent = Math.round((movie.vote_average || 0) * 10);
+    document.getElementById('heroYear').textContent = (movie.release_date || '').split('-')[0];
+    document.getElementById('heroType').textContent = movie.media_type === 'tv' ? 'TV Show' : 'Movie';
+    document.getElementById('heroGenres').textContent = getGenresText(movie.genre_ids);
+    document.getElementById('heroOverview').textContent = movie.overview || '';
+    document.getElementById('heroPlayBtn').href = `watch.html?id=${movie.id}&type=${movie.media_type || 'movie'}`;
 
-    // Boot
-    window.addEventListener('DOMContentLoaded', initCatalog);
-  </script>
+    heroContent.style.opacity = '1';
+    updateDots();
+    updateThumbs();
+  }
+
+  // ── Continue Watching (localStorage) ─────────────────────────
+  async function loadContinueWatching() {
+    try {
+      const history = JSON.parse(localStorage.getItem('sw_history') || '[]');
+      if (!history.length) return;
+      const section = document.getElementById('continueSection');
+      const grid = document.getElementById('continueGrid');
+      section.classList.remove('hidden');
+      grid.innerHTML = '';
+
+      const fetched = await Promise.all(
+        history.slice(0, 8).map(({ id, type, progress }) =>
+          fetch(`${T}/${type}/${id}?api_key=${API}`).then(r => r.json()).then(d => ({ ...d, _type: type, _progress: progress })).catch(() => null)
+        )
+      );
+
+      fetched.filter(Boolean).forEach(item => {
+        const link = document.createElement('a');
+        link.href = `watch.html?id=${item.id}&type=${item._type}`;
+        link.className = 'backdrop-card';
+        const title = item.title || item.name || '';
+        const progress = Math.min(100, Math.max(5, item._progress || 40));
+        link.innerHTML = `
+          <img src="${item.backdrop_path ? W780 + item.backdrop_path : (item.poster_path ? W500 + item.poster_path : '')}" alt="${title}" loading="lazy">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-4">
+            <div class="w-full">
+              <p class="font-bold text-sm text-white mb-2 truncate">${title}</p>
+              <div class="w-full h-[3px] bg-white/20 rounded-full overflow-hidden">
+                <div class="h-full bg-rose-600 rounded-full" style="width:${progress}%"></div>
+              </div>
+            </div>
+          </div>
+          <div class="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+            <div class="w-12 h-12 rounded-full bg-black/60 border border-white/30 flex items-center justify-center backdrop-blur-sm">
+              <i class="fas fa-play text-white text-sm ml-0.5"></i>
+            </div>
+          </div>
+        `;
+        grid.appendChild(link);
+      });
+    } catch(e) {}
+  }
+
+  // ── Fetch all sections ────────────────────────────────────────
+  async function fetchAll() {
+    const endpoints = [
+      { url: `${T}/trending/all/day?api_key=${API}`,                  grid: 'trendingGrid',      type: null,    opts: { showType: true } },
+      { url: `${T}/movie/now_playing?api_key=${API}`,                 grid: 'nowPlayingGrid',    type: 'movie', opts: {} },
+      { url: `${T}/movie/popular?api_key=${API}`,                     grid: 'popularMoviesGrid', type: 'movie', opts: {} },
+      { url: `${T}/tv/popular?api_key=${API}`,                        grid: 'tvShowsGrid',       type: 'tv',    opts: {} },
+      { url: `${T}/movie/top_rated?api_key=${API}`,                   grid: 'topRatedGrid',      type: 'movie', opts: {} },
+      { url: `${T}/movie/upcoming?api_key=${API}`,                    grid: 'latestGrid',        type: 'movie', opts: { isNew: true } },
+      { url: `${T}/discover/tv?api_key=${API}&with_networks=213`,     grid: 'netflixGrid',       type: 'tv',    opts: {} },
+      { url: `${T}/discover/tv?api_key=${API}&with_networks=2739`,    grid: 'disneyGrid',        type: 'tv',    opts: {} },
+    ];
+
+    await Promise.all(endpoints.map(async ({ url, grid, type, opts }) => {
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        const items = (data.results || []).filter(m => m.poster_path).slice(0, 12);
+        items.forEach(item => {
+          const t = type || item.media_type || 'movie';
+          const card = createCard(item, t, opts);
+          const el = document.getElementById(grid);
+          if (card && el) el.appendChild(card);
+        });
+        const el = document.getElementById(grid);
+        if (el) el.querySelectorAll('.skeleton').forEach(s => s.remove());
+      } catch(e) {}
+    }));
+  }
+
+  // ── Search ───────────────────────────────────────────────────
+  let searchCache = [];
+  let searchDebounce;
+
+  function getSimilarity(query, target) {
+    query = query.toLowerCase().trim();
+    target = target.toLowerCase().trim();
+    if (!query || !target) return 0;
+    if (query === target) return 1;
+    if (target.includes(query)) return 0.8 + (query.length / target.length) * 0.2;
+    const bigrams = s => { const b = new Set(); for (let i = 0; i < s.length - 1; i++) b.add(s.slice(i, i+2)); return b; };
+    const b1 = bigrams(query), b2 = bigrams(target);
+    if (!b1.size || !b2.size) return 0;
+    let inter = 0; for (const v of b1) if (b2.has(v)) inter++;
+    return (2 * inter) / (b1.size + b2.size);
+  }
+
+  const searchInput = document.getElementById('searchInput');
+  const heroSection = document.getElementById('heroSection');
+  const mainSections = document.getElementById('mainSectionsContainer');
+  const searchSection = document.getElementById('searchResultsSection');
+  const dropdown = document.getElementById('searchDropdown');
+  const suggestions = document.getElementById('dropdownSuggestions');
+
+  searchInput.addEventListener('input', e => {
+    const q = e.target.value.trim();
+    clearTimeout(searchDebounce);
+    if (!q) {
+      dropdown.classList.add('hidden');
+      hideSearch();
+      return;
+    }
+    dropdown.classList.remove('hidden');
+    suggestions.innerHTML = '<p class="p-4 text-zinc-600 text-xs font-medium">Searching...</p>';
+
+    searchDebounce = setTimeout(async () => {
+      try {
+        const [mRes, tRes] = await Promise.all([
+          fetch(`${T}/search/movie?api_key=${API}&query=${encodeURIComponent(q)}`),
+          fetch(`${T}/search/tv?api_key=${API}&query=${encodeURIComponent(q)}`)
+        ]);
+        const mData = await mRes.json();
+        const tData = await tRes.json();
+
+        const movies = (mData.results || []).map(i => ({ ...i, _type: 'movie', _sim: getSimilarity(q, i.title || '') }));
+        const shows  = (tData.results  || []).map(i => ({ ...i, _type: 'tv',    _sim: getSimilarity(q, i.name  || '') }));
+        const all = [...movies, ...shows].filter(i => i.poster_path).sort((a, b) => Math.abs(b._sim - a._sim) > 0.05 ? b._sim - a._sim : b.popularity - a.popularity);
+
+        suggestions.innerHTML = '';
+        if (!all.length) { suggestions.innerHTML = '<p class="p-4 text-zinc-600 text-xs font-medium">No results found.</p>'; return; }
+
+        all.slice(0, 6).forEach(item => {
+          const row = document.createElement('a');
+          row.href = `watch.html?id=${item.id}&type=${item._type}`;
+          row.className = 'flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors group cursor-pointer';
+          const year = ((item.release_date || item.first_air_date || '')).split('-')[0];
+          row.innerHTML = `
+            <img src="${W500}${item.poster_path}" class="w-10 h-14 rounded object-cover shadow-md flex-shrink-0 group-hover:scale-105 transition-transform" alt="">
+            <div class="min-w-0">
+              <p class="text-sm font-bold text-white truncate">${item.title || item.name}</p>
+              <p class="text-[11px] text-zinc-500 mt-0.5 font-medium">${item._type === 'tv' ? 'TV Show' : 'Movie'} ${year ? '· '+year : ''} · ★ ${(item.vote_average||0).toFixed(1)}</p>
+            </div>
+            <i class="fas fa-play ml-auto text-zinc-700 group-hover:text-white transition-colors text-xs mr-1"></i>
+          `;
+          suggestions.appendChild(row);
+        });
+      } catch(e) {}
+    }, 280);
+  });
+
+  searchInput.addEventListener('focus', () => { if (searchInput.value.trim()) dropdown.classList.remove('hidden'); });
+  document.addEventListener('click', e => {
+    if (!document.getElementById('searchWrapper').contains(e.target)) dropdown.classList.add('hidden');
+  });
+  searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); triggerFullSearch(); } });
+  document.getElementById('seeMoreBtn').addEventListener('click', e => { e.preventDefault(); triggerFullSearch(); });
+
+  function showSearchResults(heading) {
+    heroSection.classList.add('hidden');
+    mainSections.classList.add('hidden');
+    searchSection.classList.remove('hidden');
+    document.getElementById('searchMoviesCategory').classList.add('hidden');
+    document.getElementById('searchTVCategory').classList.add('hidden');
+    document.getElementById('searchNoResults').classList.add('hidden');
+    document.getElementById('searchCount').textContent = heading || 'Searching...';
+  }
+
+  function hideSearch() {
+    searchSection.classList.add('hidden');
+    heroSection.classList.remove('hidden');
+    mainSections.classList.remove('hidden');
+  }
+
+  async function triggerFullSearch() {
+    const q = searchInput.value.trim();
+    if (!q) return;
+    dropdown.classList.add('hidden');
+    showSearchResults(`Searching for "${q}"...`);
+
+    try {
+      const [mRes, tRes] = await Promise.all([
+        fetch(`${T}/search/movie?api_key=${API}&query=${encodeURIComponent(q)}`),
+        fetch(`${T}/search/tv?api_key=${API}&query=${encodeURIComponent(q)}`)
+      ]);
+      const mData = await mRes.json();
+      const tData = await tRes.json();
+
+      const movies = (mData.results || []).map(i => ({ ...i, _type: 'movie', _sim: getSimilarity(q, i.title || '') }));
+      const shows  = (tData.results  || []).map(i => ({ ...i, _type: 'tv',    _sim: getSimilarity(q, i.name  || '') }));
+      const sort = (a, b) => Math.abs(b._sim - a._sim) > 0.05 ? b._sim - a._sim : b.popularity - a.popularity;
+      searchCache = [...movies, ...shows].filter(i => i.poster_path).sort(sort);
+      applyFilters();
+    } catch(e) {}
+  }
+
+  function applyFilters() {
+    const type   = document.getElementById('filterType').value;
+    const genre  = document.getElementById('filterGenre').value;
+    const year   = document.getElementById('filterYear').value;
+    const rating = document.getElementById('filterRating').value;
+
+    let filtered = [...searchCache];
+    if (type !== 'all')   filtered = filtered.filter(i => i._type === type);
+    if (genre !== 'all')  filtered = filtered.filter(i => (i.genre_ids||[]).includes(+genre));
+    if (year !== 'all')   filtered = filtered.filter(i => ((i.release_date||i.first_air_date||'')).startsWith(year));
+    if (rating !== 'all') filtered = filtered.filter(i => i.vote_average >= +rating);
+
+    const m = filtered.filter(i => i._type === 'movie');
+    const t = filtered.filter(i => i._type === 'tv');
+
+    document.getElementById('searchCount').textContent = `${filtered.length} results found`;
+    document.getElementById('searchMoviesGrid').innerHTML = '';
+    document.getElementById('searchTVGrid').innerHTML = '';
+    document.getElementById('searchNoResults').classList.toggle('hidden', filtered.length > 0);
+
+    if (m.length) {
+      document.getElementById('searchMoviesCategory').classList.remove('hidden');
+      m.forEach(i => { const c = createCard(i, 'movie'); if(c) document.getElementById('searchMoviesGrid').appendChild(c); });
+    } else { document.getElementById('searchMoviesCategory').classList.add('hidden'); }
+
+    if (t.length) {
+      document.getElementById('searchTVCategory').classList.remove('hidden');
+      t.forEach(i => { const c = createCard(i, 'tv'); if(c) document.getElementById('searchTVGrid').appendChild(c); });
+    } else { document.getElementById('searchTVCategory').classList.add('hidden'); }
+  }
+
+  ['filterType','filterGenre','filterYear','filterRating'].forEach(id => {
+    document.getElementById(id).addEventListener('change', applyFilters);
+  });
+  document.getElementById('resetFiltersBtn').addEventListener('click', () => {
+    ['filterType','filterGenre','filterYear','filterRating'].forEach(id => document.getElementById(id).value = 'all');
+    applyFilters();
+  });
+
+  // ── Init ──────────────────────────────────────────────────────
+  window.addEventListener('DOMContentLoaded', async () => {
+    await loadGenres();
+    await initHero();
+    await loadContinueWatching();
+    fetchAll();
+  });
+</script>
 </body>
 </html>
