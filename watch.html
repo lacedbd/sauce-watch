@@ -890,16 +890,24 @@
         function enableHeroFocusMode() {
             trailerIsPlaying = true;
             const hero = document.getElementById('heroSection');
-            hero.addEventListener('mousemove', onHeroMouseMove);
+            
+            // Listen for any user activity to wake up the UI
+            hero.addEventListener('mousemove', onUserActivity);
+            hero.addEventListener('touchstart', onUserActivity, {passive: true});
+            hero.addEventListener('click', onUserActivity);
+            
             hero.addEventListener('mouseleave', onHeroMouseLeave);
+            
+            // Start the idle timer immediately so it fades out if the user does nothing
+            onUserActivity();
         }
 
-        function onHeroMouseMove() {
+        function onUserActivity() {
             const hero = document.getElementById('heroSection');
-            // Mouse is moving — show full UI immediately
+            // User interacted — show full UI immediately
             hero.classList.remove('trailer-focused');
             clearTimeout(heroIdleTimer);
-            // After 3s of no movement, collapse to focused mode
+            // After 3s of no interaction, collapse to focused mode
             heroIdleTimer = setTimeout(() => {
                 if (trailerIsPlaying) hero.classList.add('trailer-focused');
             }, 3000);
