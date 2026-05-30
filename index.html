@@ -224,20 +224,17 @@
       line-height: 1.3;
     }
     .poster-card .card-info .meta-row {
-      display: grid;
-      grid-template-columns: 13px auto 13px auto;
+      display: flex;
       align-items: center;
-      column-gap: 4px;
-      row-gap: 2px;
+      gap: 4px;
     }
     .poster-card .card-info .meta-row i {
-      justify-self: center;
       font-size: 8px;
       color: #facc15;
     }
     .poster-card .card-info .meta-row .rt-icon {
       width: 11px; height: 11px;
-      justify-self: center;
+      margin-left: 8px;
     }
     .poster-card .card-info .meta-row .imdb-val {
       font-size: 10px; font-weight: 700; color: #facc15;
@@ -537,14 +534,14 @@
       <span class="section-title text-zinc-400 text-sm font-semibold uppercase tracking-widest">Browse by Platform</span>
     </div>
     <div class="flex gap-4 overflow-x-auto scrollbar-hide pb-3">
-      <div class="provider-card"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Netflix_2015_logo.svg/800px-Netflix_2015_logo.svg.png" alt="Netflix"></div>
-      <div class="provider-card"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Amazon_Prime_Video_logo.svg/800px-Amazon_Prime_Video_logo.svg.png" alt="Prime Video"></div>
-      <div class="provider-card"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/HBO_Max_Logo.svg/512px-HBO_Max_Logo.svg.png" alt="Max"></div>
-      <div class="provider-card"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Disney%2B_logo.svg/800px-Disney%2B_logo.svg.png" alt="Disney+"></div>
-      <div class="provider-card"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Apple_TV_Plus_Logo.svg/512px-Apple_TV_Plus_Logo.svg.png" alt="Apple TV+"></div>
-      <div class="provider-card"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Paramount_Plus_logo.svg/800px-Paramount_Plus_logo.svg.png" alt="Paramount+"></div>
-      <div class="provider-card"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Hulu_logo_%282014%29.svg/800px-Hulu_logo_%282014%29.svg.png" alt="Hulu"></div>
-      <div class="provider-card"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Crunchyroll_2023_logo.svg/512px-Crunchyroll_2023_logo.svg.png" alt="Crunchyroll"></div>
+      <div class="provider-card"><img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F4ccfbb52-a408-4106-904d-faacc6362eb4.webp" alt="Netflix"></div>
+      <div class="provider-card"><img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F91b7d084-0f10-4f10-a1ec-f229f5c58979.webp" alt="Prime Video"></div>
+      <div class="provider-card"><img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F40ab4572-ec66-445c-8d35-3a6a84353752.webp" alt="Max"></div>
+      <div class="provider-card"><img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2Fadb64e68-be74-4641-9672-fc65c70dfbc1.webp" alt="Disney+"></div>
+      <div class="provider-card"><img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F7fce8935-dd7f-437c-8bb7-1f76708bfd34.webp" alt="Apple TV+"></div>
+      <div class="provider-card"><img src="https://image.tmdb.org/t/p/original/fts6X10Jn4QT0X6ac3udKEn2tJA.jpg" alt="Paramount+"></div>
+      <div class="provider-card"><img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F76f86176-ffda-4a18-be2b-501693a8b862.webp" alt="Hulu"></div>
+      <div class="provider-card"><img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/Tdf3UNaSiIToxrbKqp4vcS3fwjO2%2Fclone-site-assets%2F78578338-0582-4ad9-b953-b7367feeb3de.webp" alt="Crunchyroll"></div>
     </div>
   </section>
 
@@ -879,12 +876,6 @@
         <img src="${poster}" alt="${title}" loading="lazy">
         ${typeTag}
         ${newBadge}
-        <div class="rating-badge">
-          <i class="fas fa-star text-yellow-400 text-[9px] justify-self-center"></i>
-          <span class="text-yellow-400 text-[9px] font-bold">${rating}</span>
-          <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f345.svg" class="w-[10px] h-[10px] justify-self-center" alt="RT">
-          <span class="text-white text-[9px] font-bold">${rt}%</span>
-        </div>
       </div>
       <div class="card-info">
         <h5>${title}</h5>
