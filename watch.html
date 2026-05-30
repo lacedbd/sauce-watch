@@ -139,6 +139,7 @@
             <!-- Metadata details row -->
             <div id="heroMeta" class="flex flex-wrap items-center gap-3 text-xs md:text-sm text-gray-300 font-medium">
                 <span class="text-red-500 font-bold flex items-center gap-1">★ <span id="movieRating"></span></span>
+                <span class="text-white font-bold flex items-center gap-1.5"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f345.svg" class="w-4 h-4 drop-shadow-sm" alt="RT"> <span id="movieRtScore"></span>%</span>
                 <span class="opacity-40">•</span>
                 <span id="movieYear"></span>
                 <span class="opacity-40">•</span>
@@ -615,6 +616,7 @@
                     }
                     
                     document.getElementById('movieRating').innerText = data.vote_average ? data.vote_average.toFixed(1) : "0.0";
+                    document.getElementById('movieRtScore').innerText = data.vote_average ? Math.round(data.vote_average * 10) : "0";
                     
                     // Fade in the hero content block now that everything is populated
                     const heroContent = document.getElementById('heroContent');
