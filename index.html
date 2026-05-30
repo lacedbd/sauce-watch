@@ -948,8 +948,6 @@
   }
 
   // ── Hero Slideshow & Trailer Autoplay ────────────────────────
-  let activeTrailerFetchId = 0;
-
   async function initHero() {
     const res = await fetch(`${T}/trending/movie/day?api_key=${API}`);
     const data = await res.json();
