@@ -1463,7 +1463,7 @@
                         const type = item.media_type || currentType;
                         const card = document.createElement('a');
                         card.href = `watch.html?id=${item.id}&type=${type}`;
-                        card.className = "flex flex-col gap-2 group cursor-pointer w-full transition-all duration-300 hover:-translate-y-1.5";
+                        card.className = "flex flex-col gap-2 group cursor-pointer w-full transition-all duration-300 hover:-translate-y-1.5 hover:scale-[1.04]";
                         
                         const rating = item.vote_average ? item.vote_average.toFixed(1) : "0.0";
                         const title = item.title || item.name;
@@ -1480,12 +1480,12 @@
                                 <div class="absolute inset-0 flex justify-center items-center opacity-0 transition-opacity z-20 pointer-events-none" id="hover-spinner-${item.id}">
                                     <div class="w-8 h-8 border-2 border-white/20 border-t-red-600 rounded-full animate-spin"></div>
                                 </div>
-                                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-white flex items-center gap-1 opacity-0 transition-opacity z-10" id="volIcon-${item.id}">
-                                    <i class="fas fa-volume-mute text-xs"></i>
+                                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-white flex items-center gap-1 opacity-0 transition-opacity z-30 cursor-pointer hover:bg-black/80 hover:scale-110 active:scale-95 transition-all" id="volIcon-${item.id}">
+                                    <i class="fas fa-volume-up text-xs text-red-500"></i>
                                 </div>
                                 <!-- Native HTML5 hover trailer -->
                                 <div id="trailer-wrapper-${item.id}" class="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-0 transition-opacity duration-300" style="opacity: 0.01;">
-                                    <video id="trailer-player-${item.id}" class="w-full h-full object-cover pointer-events-none" loop muted playsinline></video>
+                                    <video id="trailer-player-${item.id}" class="w-full h-full object-cover pointer-events-none" loop playsinline></video>
                                 </div>
                             </div>
                             <div class="px-1 mt-2">
@@ -1527,6 +1527,37 @@
                             const spinner = card.querySelector(`#hover-spinner-${item.id}`);
                             const cardLogo = card.querySelector(`#logo-${item.id}`);
 
+                            // Interactive Mute/Unmute Corner Button
+                            if (volIcon) {
+                                volIcon.addEventListener('click', (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    
+                                    let isCurrentlyMuted = false;
+                                    if (cardVideoEl) {
+                                        cardVideoEl.muted = !cardVideoEl.muted;
+                                        isCurrentlyMuted = cardVideoEl.muted;
+                                    } else if (cardYtPlayer && typeof cardYtPlayer.isMuted === 'function') {
+                                        if (cardYtPlayer.isMuted()) {
+                                            cardYtPlayer.unMute();
+                                            isCurrentlyMuted = false;
+                                        } else {
+                                            cardYtPlayer.mute();
+                                            isCurrentlyMuted = true;
+                                        }
+                                    }
+                                    
+                                    const icon = volIcon.querySelector('i');
+                                    if (icon) {
+                                        if (isCurrentlyMuted) {
+                                            icon.className = "fas fa-volume-mute text-xs";
+                                        } else {
+                                            icon.className = "fas fa-volume-up text-xs text-red-500";
+                                        }
+                                    }
+                                });
+                            }
+
                             function loadYoutubeHoverTrailer(ytKey) {
                                  trailerWrapper.innerHTML = `
                                      <div id="yt-hover-${item.id}" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400%] h-[150%] max-w-none pointer-events-none"></div>
@@ -1547,18 +1578,31 @@
                                          
                                          cardYtPlayer = new YT.Player(`yt-hover-${item.id}`, {
                                              videoId: ytKey,
-                                             width: '100%',
-                                             height: '100%',
                                              playerVars: {
-                                                 autoplay: 1, mute: 1, controls: 0, showinfo: 0,
+                                                 autoplay: 1, mute: 0, controls: 0, showinfo: 0,
                                                  rel: 0, iv_load_policy: 3, loop: 1,
                                                  playlist: ytKey, playsinline: 1,
                                                  disablekb: 1, fs: 0, modestbranding: 1, vq: 'small'
                                              },
                                              events: {
                                                  onReady: (e) => {
-                                                     e.target.mute();
+                                                     e.target.unMute();
                                                      e.target.playVideo();
+                                                     
+                                                     // Fallback if browser blocks unmuted autoplay
+                                                     setTimeout(() => {
+                                                         if (card.matches(':hover')) {
+                                                             const state = e.target.getPlayerState();
+                                                             if (state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING) {
+                                                                 console.warn("Unmuted YT autoplay blocked, falling back to muted...");
+                                                                 e.target.mute();
+                                                                 e.target.playVideo();
+                                                                 const icon = volIcon.querySelector('i');
+                                                                 if (icon) icon.className = "fas fa-volume-mute text-xs";
+                                                             }
+                                                         }
+                                                     }, 1500);
+
                                                      const iframe = e.target.getIframe();
                                                      if (iframe) {
                                                          iframe.style.pointerEvents = 'none';
@@ -1574,6 +1618,14 @@
                                                  },
                                                  onStateChange: (e) => {
                                                      if (e.data === YT.PlayerState.PLAYING) {
+                                                         const icon = volIcon.querySelector('i');
+                                                         if (icon) {
+                                                             if (e.target.isMuted()) {
+                                                                 icon.className = "fas fa-volume-mute text-xs";
+                                                             } else {
+                                                                 icon.className = "fas fa-volume-up text-xs text-red-500";
+                                                             }
+                                                         }
                                                          playTimeout = setTimeout(() => {
                                                              if (card.matches(':hover') && trailerWrapper) {
                                                                  trailerWrapper.style.transition = 'opacity 0.5s ease';
@@ -1629,6 +1681,7 @@
                                                 
                                                 if (proxyData && proxyData.url) {
                                                     videoPlayer.src = proxyData.url;
+                                                    videoPlayer.muted = false;
                                                     cardVideoEl = videoPlayer;
                                                     
                                                     videoPlayer.onloadeddata = () => {
@@ -1640,10 +1693,17 @@
                                                             if (cardLogo) cardLogo.classList.add('opacity-0');
                                                         }
                                                     };
-
-                                                    videoPlayer.play().catch(e => {
-                                                        console.error("Card trailer autoplay failed:", e);
-                                                        spinner.classList.add('opacity-0');
+                                                    
+                                                    videoPlayer.play().catch(playErr => {
+                                                        console.warn("Unmuted autoplay blocked, falling back to muted:", playErr);
+                                                        videoPlayer.muted = true;
+                                                        const icon = volIcon.querySelector('i');
+                                                        if (icon) icon.className = "fas fa-volume-mute text-xs";
+                                                        
+                                                        videoPlayer.play().catch(err2 => {
+                                                            console.error("Card trailer autoplay failed completely:", err2);
+                                                            spinner.classList.add('opacity-0');
+                                                        });
                                                     });
                                                     return;
                                                 }
@@ -1669,6 +1729,10 @@
                                 trailerWrapper.style.transition = 'none';
                                 trailerWrapper.style.opacity = '0.01';
                                 volIcon.classList.add('opacity-0');
+                                const icon = volIcon.querySelector('i');
+                                if (icon) {
+                                    icon.className = "fas fa-volume-up text-xs text-red-500";
+                                }
                                 if (cardVideoEl) {
                                     cardVideoEl.pause();
                                     cardVideoEl.src = '';
@@ -1677,7 +1741,7 @@
                                 if (cardYtPlayer && typeof cardYtPlayer.destroy === 'function') {
                                     cardYtPlayer.destroy();
                                     cardYtPlayer = null;
-                                    trailerWrapper.innerHTML = `<video id="trailer-player-${item.id}" class="w-full h-full object-cover pointer-events-none" loop muted playsinline></video>`;
+                                    trailerWrapper.innerHTML = `<video id="trailer-player-${item.id}" class="w-full h-full object-cover pointer-events-none" loop playsinline></video>`;
                                 }
                             });
                         }
