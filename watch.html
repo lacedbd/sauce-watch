@@ -109,24 +109,26 @@
         }
         /* ── Wishlist Button ── */
         .wishlist-btn {
-            position: absolute;
-            top: 7px; right: 7px;
-            width: 26px; height: 26px;
-            background: rgba(0,0,0,0.55);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 50%;
-            color: rgba(255,255,255,0.8);
-            font-size: 11px;
-            cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: background 0.15s, color 0.15s, transform 0.15s, border-color 0.15s;
-            z-index: 25;
+            position: absolute !important;
+            top: 7px !important; right: 7px !important;
+            width: 26px !important; height: 26px !important;
+            background: rgba(0,0,0,0.55) !important;
+            backdrop-filter: blur(8px) !important;
+            -webkit-backdrop-filter: blur(8px) !important;
+            border: 1px solid rgba(255,255,255,0.12) !important;
+            border-radius: 50% !important;
+            color: rgba(255,255,255,0.8) !important;
+            font-size: 11px !important;
+            cursor: pointer !important;
+            display: flex !important; align-items: center !important; justify-content: center !important;
+            transition: background 0.15s, color 0.15s, transform 0.15s, border-color 0.15s !important;
+            z-index: 50 !important;
+            opacity: 1 !important;
+            visibility: visible !important;
         }
-        .wishlist-btn:hover { background: rgba(220,38,38,0.8); border-color: rgba(220,38,38,0.6); color: #fff; transform: scale(1.12); }
-        .wishlist-btn.saved { background: rgba(220,38,38,0.85); border-color: rgba(220,38,38,0.6); color: #fff; }
-        .wishlist-btn.saved:hover { background: rgba(0,0,0,0.75); border-color: rgba(255,255,255,0.2); }
+        .wishlist-btn:hover { background: rgba(220,38,38,0.8) !important; border-color: rgba(220,38,38,0.6) !important; color: #fff !important; transform: scale(1.12) !important; }
+        .wishlist-btn.saved { background: rgba(220,38,38,0.85) !important; border-color: rgba(220,38,38,0.6) !important; color: #fff !important; }
+        .wishlist-btn.saved:hover { background: rgba(0,0,0,0.75) !important; border-color: rgba(255,255,255,0.2) !important; }
 
         @media (min-width: 768px) {
             #heroTitleLogo {
@@ -1517,7 +1519,7 @@
                                 <div class="absolute inset-0 flex justify-center items-center opacity-0 transition-opacity z-20 pointer-events-none" id="hover-spinner-${item.id}">
                                     <div class="w-8 h-8 border-2 border-white/20 border-t-red-600 rounded-full animate-spin"></div>
                                 </div>
-                                <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-white flex items-center gap-1 opacity-0 transition-opacity z-30 cursor-pointer hover:bg-black/80 hover:scale-110 active:scale-95 transition-all" id="volIcon-${item.id}">
+                                <div class="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-white flex items-center gap-1 opacity-0 transition-opacity z-30 cursor-pointer hover:bg-black/80 hover:scale-110 active:scale-95 transition-all" id="volIcon-${item.id}">
                                     <i class="fas fa-volume-up text-xs text-red-500"></i>
                                 </div>
                                 <button class="wishlist-btn${wlSaved ? ' saved' : ''}" id="wl-${item.id}" title="Add to Wishlist">

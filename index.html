@@ -476,9 +476,7 @@
     .marquee-wrapper {
       position: relative;
       width: 100%;
-      overflow-x: auto;
-      scrollbar-width: none;
-      -webkit-overflow-scrolling: touch;
+      overflow: hidden;
       padding: 10px 0;
       mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
       -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
@@ -491,7 +489,7 @@
       display: flex;
       gap: 20px;
       width: max-content;
-      animation: marquee 30s linear infinite;
+      animation: marquee 30s linear infinite !important;
       will-change: transform;
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
@@ -500,7 +498,7 @@
     
     /* Pause moving on hover */
     .marquee-wrapper:hover .marquee-track {
-      animation-play-state: paused;
+      animation-play-state: paused !important;
     }
     
     @keyframes marquee {
@@ -599,26 +597,28 @@
 
     /* ── Wishlist Button ── */
     .wishlist-btn {
-      position: absolute;
-      top: 7px; right: 7px;
-      width: 26px; height: 26px;
-      background: rgba(0,0,0,0.55);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 50%;
-      color: rgba(255,255,255,0.8);
+      position: absolute !important;
+      top: 7px !important; right: 7px !important;
+      width: 26px !important; height: 26px !important;
+      background: rgba(0,0,0,0.55) !important;
+      backdrop-filter: blur(8px) !important;
+      -webkit-backdrop-filter: blur(8px) !important;
+      border: 1px solid rgba(255,255,255,0.12) !important;
+      border-radius: 50% !important;
+      color: rgba(255,255,255,0.8) !important;
       font-size: 13px;
       font-weight: 300;
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: background 0.15s, color 0.15s, transform 0.15s, border-color 0.15s;
-      z-index: 20;
-      line-height: 1;
+      cursor: pointer !important;
+      display: flex !important; align-items: center !important; justify-content: center !important;
+      transition: background 0.15s, color 0.15s, transform 0.15s, border-color 0.15s !important;
+      z-index: 50 !important;
+      line-height: 1 !important;
+      opacity: 1 !important;
+      visibility: visible !important;
     }
-    .wishlist-btn:hover { background: rgba(220,38,38,0.8); border-color: rgba(220,38,38,0.6); color: #fff; transform: scale(1.12); }
-    .wishlist-btn.saved { background: rgba(220,38,38,0.85); border-color: rgba(220,38,38,0.6); color: #fff; }
-    .wishlist-btn.saved:hover { background: rgba(0,0,0,0.75); border-color: rgba(255,255,255,0.2); }
+    .wishlist-btn:hover { background: rgba(220,38,38,0.8) !important; border-color: rgba(220,38,38,0.6) !important; color: #fff !important; transform: scale(1.12) !important; }
+    .wishlist-btn.saved { background: rgba(220,38,38,0.85) !important; border-color: rgba(220,38,38,0.6) !important; color: #fff !important; }
+    .wishlist-btn.saved:hover { background: rgba(0,0,0,0.75) !important; border-color: rgba(255,255,255,0.2) !important; }
 
     /* ── Slider Row ── */
     .slider-row {
@@ -2102,90 +2102,12 @@
   });
 
   function initPlatformMarquee() {
-    const wrapper = document.querySelector('.marquee-wrapper');
+    // Relying on native pure-CSS high performance GPU accelerated animation
+    // defined in .marquee-track. This avoids JS layout/offset lagging.
     const track = document.querySelector('.marquee-track');
-    if (!wrapper || !track) return;
-
-    // Reset CSS animation
-    track.style.animation = 'none';
-    track.style.transform = 'none';
-    track.style.cursor = 'grab';
-
-    const cards = Array.from(track.querySelectorAll('.provider-card'));
-    const firstDuplicate = cards.find(c => c.classList.contains('duplicate'));
-    if (!firstDuplicate) return;
-
-    let setWidth = firstDuplicate.offsetLeft;
-    window.addEventListener('resize', () => {
-      setWidth = firstDuplicate.offsetLeft;
-    });
-
-    let autoScrollSpeed = 0.8; // Speed of autoscroll
-    let isUserInteracting = false;
-    let autoScrollActive = true;
-
-    function step() {
-      if (autoScrollActive && !isUserInteracting) {
-        wrapper.scrollLeft += autoScrollSpeed;
-      }
-      
-      // Infinite loop wrap check
-      if (wrapper.scrollLeft >= setWidth) {
-        wrapper.scrollLeft -= setWidth;
-      } else if (wrapper.scrollLeft <= 0) {
-        wrapper.scrollLeft += setWidth;
-      }
-
-      requestAnimationFrame(step);
+    if (track) {
+      track.style.cursor = 'pointer';
     }
-    requestAnimationFrame(step);
-
-    wrapper.addEventListener('touchstart', () => {
-      isUserInteracting = true;
-    }, { passive: true });
-
-    wrapper.addEventListener('touchend', () => {
-      isUserInteracting = false;
-    }, { passive: true });
-
-    wrapper.addEventListener('touchcancel', () => {
-      isUserInteracting = false;
-    }, { passive: true });
-
-    let isMouseDown = false;
-    let startX = 0;
-    let scrollLeftStart = 0;
-
-    wrapper.addEventListener('mousedown', (e) => {
-      isMouseDown = true;
-      isUserInteracting = true;
-      track.style.cursor = 'grabbing';
-      startX = e.pageX - wrapper.offsetLeft;
-      scrollLeftStart = wrapper.scrollLeft;
-    });
-
-    window.addEventListener('mouseup', () => {
-      if (isMouseDown) {
-        isMouseDown = false;
-        isUserInteracting = false;
-        track.style.cursor = 'grab';
-      }
-    });
-
-    wrapper.addEventListener('mousemove', (e) => {
-      if (!isMouseDown) return;
-      e.preventDefault();
-      const x = e.pageX - wrapper.offsetLeft;
-      const walk = (x - startX) * 1.5;
-      wrapper.scrollLeft = scrollLeftStart - walk;
-    });
-
-    wrapper.addEventListener('mouseenter', () => {
-      autoScrollActive = false;
-    });
-    wrapper.addEventListener('mouseleave', () => {
-      autoScrollActive = true;
-    });
   }
 
   // ── Init ──────────────────────────────────────────────────────
