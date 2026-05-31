@@ -169,13 +169,19 @@
     }
     .surprise-btn:active { transform: scale(0.96); }
 
+    #filterRow {
+      transition: opacity 0.2s ease;
+    }
     @media (max-width: 767px) {
       .filter-row {
-        display: grid !important;
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 10px !important;
-        width: 100% !important;
-        margin-top: 14px !important;
+        display: none;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        width: 100%;
+        margin-top: 14px;
+      }
+      .filter-row.open {
+        display: grid;
       }
       .filter-select {
         width: 100% !important;
@@ -196,6 +202,11 @@
       }
       .result-info {
         margin-top: 24px !important;
+      }
+    }
+    @media (min-width: 768px) {
+      #toggleFiltersBtn {
+        display: none !important;
       }
     }
 
@@ -390,10 +401,17 @@
   <!-- ── SEARCH + FILTERS ── -->
   <div class="max-w-[1440px] mx-auto px-5 md:px-14 pt-6 pb-4">
 
-    <!-- Search Bar -->
-    <div class="search-bar" id="searchBarEl">
-      <i class="fas fa-search" style="color:rgba(255,255,255,0.25); font-size:15px;"></i>
-      <input id="mainSearchInput" type="search" placeholder="Search..." autocomplete="off" autofocus />
+    <!-- Search Bar + Filter Toggle -->
+    <div class="flex items-center gap-3 w-full">
+      <div class="search-bar flex-1" id="searchBarEl">
+        <i class="fas fa-search" style="color:rgba(255,255,255,0.25); font-size:15px;"></i>
+        <input id="mainSearchInput" type="search" placeholder="Search..." autocomplete="off" autofocus />
+      </div>
+      <button id="toggleFiltersBtn" class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 active:scale-95 transition-all rounded-xl px-4 py-3 text-zinc-300 hover:text-white text-sm font-semibold select-none cursor-pointer">
+        <i class="fas fa-sliders-h"></i>
+        <span>Filters</span>
+        <span id="activeFilterBadge" class="hidden bg-rose-600 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center font-bold">0</span>
+      </button>
     </div>
 
     <!-- Filter Dropdowns -->
@@ -662,6 +680,15 @@
     applyURLParams();
     fetchResults();
     showMobileNav();
+
+    // Wire up Toggle Filters button
+    const toggleFiltersBtn = document.getElementById('toggleFiltersBtn');
+    const filterRow = document.getElementById('filterRow');
+    if (toggleFiltersBtn && filterRow) {
+      toggleFiltersBtn.addEventListener('click', () => {
+        filterRow.classList.toggle('open');
+      });
+    }
 
     // Wire up Category selection change
     document.getElementById('filterCategory').addEventListener('change', (e) => {
@@ -1105,15 +1132,36 @@
       { id: 'filterPlatform', defaultVal: 'all' }
     ];
 
+    let activeCount = 0;
     filters.forEach(({ id, defaultVal }) => {
       const el = document.getElementById(id);
       const wrapper = el.parentElement;
       if (el.value !== defaultVal) {
         wrapper.classList.add('active-filter');
+        activeCount++;
       } else {
         wrapper.classList.remove('active-filter');
       }
     });
+
+    const badge = document.getElementById('activeFilterBadge');
+    const toggleBtn = document.getElementById('toggleFiltersBtn');
+    if (badge) {
+      if (activeCount > 0) {
+        badge.textContent = activeCount;
+        badge.classList.remove('hidden');
+        badge.classList.add('flex');
+        if (toggleBtn) {
+          toggleBtn.classList.add('border-rose-600/40', 'bg-rose-900/10', 'text-rose-400');
+        }
+      } else {
+        badge.classList.add('hidden');
+        badge.classList.remove('flex');
+        if (toggleBtn) {
+          toggleBtn.classList.remove('border-rose-600/40', 'bg-rose-900/10', 'text-rose-400');
+        }
+      }
+    }
   }
 
   async function surpriseMe() {

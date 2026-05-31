@@ -2339,6 +2339,34 @@
     }, 280);
   });
 
+  // Desktop & Mobile search buttons wire up
+  const searchTriggerBtn = document.getElementById('searchTriggerBtn');
+  const searchWrapper = document.getElementById('searchWrapper');
+  const searchCloseBtn = document.getElementById('searchCloseBtn');
+
+  if (searchTriggerBtn) {
+    searchTriggerBtn.addEventListener('click', () => {
+      if (window.innerWidth < 768) {
+        openMobileSearch();
+      } else {
+        searchTriggerBtn.classList.add('hidden');
+        searchWrapper.classList.remove('hidden');
+        if (searchInput) searchInput.focus();
+      }
+    });
+  }
+
+  if (searchCloseBtn) {
+    searchCloseBtn.addEventListener('click', () => {
+      searchWrapper.classList.add('hidden');
+      searchTriggerBtn.classList.remove('hidden');
+      if (searchInput) {
+        searchInput.value = '';
+      }
+      hideSearch();
+    });
+  }
+
   // Close overlay with Escape key
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && mobileOverlay.classList.contains('open')) closeMobileSearch();
