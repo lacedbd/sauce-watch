@@ -179,6 +179,96 @@
     const TMDB_BASE    = "https://api.themoviedb.org/3";
     const POSTER_BASE  = "https://image.tmdb.org/t/p/w500";
 
+    // ── fetchTMDB wrapper with Hybrid caching (Browser sessionStorage and Vercel CDN proxy) ──
+    async function fetchTMDB(endpoint, queryParams = {}) {
+      let path = endpoint;
+      let params = { ...queryParams };
+      
+      if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+        try {
+          const urlObj = new URL(endpoint);
+          path = urlObj.pathname.replace(/^\/3\//, '');
+          for (const [key, value] of urlObj.searchParams.entries()) {
+            if (key !== 'api_key') {
+              params[key] = value;
+            }
+          }
+        } catch (e) {
+          console.error("URL parse error in fetchTMDB", e);
+        }
+      } else {
+        path = path.replace(/^\//, '');
+      }
+
+      const searchParams = new URLSearchParams(params);
+      const cacheKey = `tmdb_cache_${path}?${searchParams.toString()}`;
+
+      // 1. Browser sessionStorage cache check
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          const data = JSON.parse(cached);
+          return {
+            ok: true,
+            status: 200,
+            json: async () => data
+          };
+        }
+      } catch (e) {}
+
+      let data = null;
+      let ok = false;
+      let status = 500;
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+
+      // 2. Vercel Serverless CDN caching proxy check
+      if (!isLocal) {
+        const proxyParams = new URLSearchParams(params);
+        proxyParams.set('path', path);
+        try {
+          const res = await fetch(`/api/tmdb?${proxyParams.toString()}`);
+          if (res.ok) {
+            data = await res.json();
+            ok = true;
+            status = res.status;
+          }
+        } catch (e) {
+          console.warn("Vercel proxy failed, falling back to direct TMDB request", e);
+        }
+      }
+
+      // 3. Fallback: Direct TMDB request
+      if (!data) {
+        const directParams = new URLSearchParams(params);
+        directParams.set('api_key', TMDB_API_KEY);
+        try {
+          const res = await fetch(`${TMDB_BASE}/${path}?${directParams.toString()}`);
+          if (res.ok) {
+            data = await res.json();
+            ok = true;
+            status = res.status;
+          } else {
+            status = res.status;
+          }
+        } catch (e) {
+          console.error("Direct fetch failed", e);
+        }
+      }
+
+      // 4. Save to cache on success
+      if (ok && data) {
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify(data));
+        } catch (e) {}
+      }
+
+      return {
+        ok,
+        status,
+        json: async () => data
+      };
+    }
+
     const actorId = new URLSearchParams(window.location.search).get('id');
     let allFilms  = [];   // all credits with poster_path
     let activeTab = 'all';
@@ -267,8 +357,8 @@
 
       try {
         const [resPerson, resCreds] = await Promise.all([
-          fetch(`${TMDB_BASE}/person/${actorId}?api_key=${TMDB_API_KEY}`),
-          fetch(`${TMDB_BASE}/person/${actorId}/combined_credits?api_key=${TMDB_API_KEY}`)
+          fetchTMDB(`${TMDB_BASE}/person/${actorId}?api_key=${TMDB_API_KEY}`),
+          fetchTMDB(`${TMDB_BASE}/person/${actorId}/combined_credits?api_key=${TMDB_API_KEY}`)
         ]);
         const [actor, credits] = await Promise.all([resPerson.json(), resCreds.json()]);
 

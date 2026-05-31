@@ -1179,6 +1179,96 @@
   const W500 = "https://image.tmdb.org/t/p/w500";
   const W780 = "https://image.tmdb.org/t/p/w780";
 
+  // ── fetchTMDB wrapper with Hybrid caching (Browser sessionStorage and Vercel CDN proxy) ──
+  async function fetchTMDB(endpoint, queryParams = {}) {
+    let path = endpoint;
+    let params = { ...queryParams };
+    
+    if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+      try {
+        const urlObj = new URL(endpoint);
+        path = urlObj.pathname.replace(/^\/3\//, '');
+        for (const [key, value] of urlObj.searchParams.entries()) {
+          if (key !== 'api_key') {
+            params[key] = value;
+          }
+        }
+      } catch (e) {
+        console.error("URL parse error in fetchTMDB", e);
+      }
+    } else {
+      path = path.replace(/^\//, '');
+    }
+
+    const searchParams = new URLSearchParams(params);
+    const cacheKey = `tmdb_cache_${path}?${searchParams.toString()}`;
+
+    // 1. Browser sessionStorage cache check
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const data = JSON.parse(cached);
+        return {
+          ok: true,
+          status: 200,
+          json: async () => data
+        };
+      }
+    } catch (e) {}
+
+    let data = null;
+    let ok = false;
+    let status = 500;
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+
+    // 2. Vercel Serverless CDN caching proxy check
+    if (!isLocal) {
+      const proxyParams = new URLSearchParams(params);
+      proxyParams.set('path', path);
+      try {
+        const res = await fetch(`/api/tmdb?${proxyParams.toString()}`);
+        if (res.ok) {
+          data = await res.json();
+          ok = true;
+          status = res.status;
+        }
+      } catch (e) {
+        console.warn("Vercel proxy failed, falling back to direct TMDB request", e);
+      }
+    }
+
+    // 3. Fallback: Direct TMDB request
+    if (!data) {
+      const directParams = new URLSearchParams(params);
+      directParams.set('api_key', API);
+      try {
+        const res = await fetch(`${T}/${path}?${directParams.toString()}`);
+        if (res.ok) {
+          data = await res.json();
+          ok = true;
+          status = res.status;
+        } else {
+          status = res.status;
+        }
+      } catch (e) {
+        console.error("Direct fetch failed", e);
+      }
+    }
+
+    // 4. Save to cache on success
+    if (ok && data) {
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify(data));
+      } catch (e) {}
+    }
+
+    return {
+      ok,
+      status,
+      json: async () => data
+    };
+  }
+
   let genresMap = {};
   let slideshowMovies = [];
   let slideIndex = 0;
@@ -1219,8 +1309,8 @@
   async function loadGenres() {
     try {
       const [mRes, tRes] = await Promise.all([
-        fetch(`${T}/genre/movie/list?api_key=${API}`),
-        fetch(`${T}/genre/tv/list?api_key=${API}`)
+        fetchTMDB(`${T}/genre/movie/list?api_key=${API}`),
+        fetchTMDB(`${T}/genre/tv/list?api_key=${API}`)
       ]);
       const mData = await mRes.json();
       const tData = await tRes.json();
@@ -1302,7 +1392,7 @@
 
   // ── Hero Slideshow & Trailer Autoplay ────────────────────────
   async function initHero() {
-    const res = await fetch(`${T}/trending/movie/day?api_key=${API}`);
+    const res = await fetchTMDB(`${T}/trending/movie/day?api_key=${API}`);
     const data = await res.json();
     slideshowMovies = (data.results || []).filter(m => m.backdrop_path && m.poster_path).slice(0, 6);
     if (slideshowMovies.length === 0) return;
@@ -1688,7 +1778,7 @@
     // ── Populate content ──────────────────────────────────────────────────────
     let logoUrl = null;
     try {
-      const imgRes = await fetch(`${T}/movie/${movie.id}/images?api_key=${API}&include_image_language=en,null`);
+      const imgRes = await fetchTMDB(`${T}/movie/${movie.id}/images?api_key=${API}&include_image_language=en,null`);
       const imgData = await imgRes.json();
       const logo = (imgData.logos || []).find(l => l.iso_639_1 === 'en') || imgData.logos?.[0];
       if (logo?.file_path) logoUrl = `${W500}${logo.file_path}`;
@@ -1744,7 +1834,7 @@
 
       const fetched = await Promise.all(
         history.slice(0, 8).map(({ id, type, progress }) =>
-          fetch(`${T}/${type}/${id}?api_key=${API}`).then(r => r.json()).then(d => ({ ...d, _type: type, _progress: progress })).catch(() => null)
+          fetchTMDB(`${T}/${type}/${id}?api_key=${API}`).then(r => r.json()).then(d => ({ ...d, _type: type, _progress: progress })).catch(() => null)
         )
       );
 
@@ -1791,7 +1881,7 @@
 
     await Promise.all(endpoints.map(async ({ url, grid, type, opts }) => {
       try {
-        const res = await fetch(url);
+        const res = await fetchTMDB(url);
         const data = await res.json();
         const items = (data.results || []).filter(m => m.poster_path).slice(0, 12);
         items.forEach(item => {
@@ -1844,8 +1934,8 @@
     searchDebounce = setTimeout(async () => {
       try {
         const [mRes, tRes] = await Promise.all([
-          fetch(`${T}/search/movie?api_key=${API}&query=${encodeURIComponent(q)}`),
-          fetch(`${T}/search/tv?api_key=${API}&query=${encodeURIComponent(q)}`)
+          fetchTMDB(`${T}/search/movie?api_key=${API}&query=${encodeURIComponent(q)}`),
+          fetchTMDB(`${T}/search/tv?api_key=${API}&query=${encodeURIComponent(q)}`)
         ]);
         const mData = await mRes.json();
         const tData = await tRes.json();
@@ -1907,8 +1997,8 @@
 
     try {
       const [mRes, tRes] = await Promise.all([
-        fetch(`${T}/search/movie?api_key=${API}&query=${encodeURIComponent(q)}`),
-        fetch(`${T}/search/tv?api_key=${API}&query=${encodeURIComponent(q)}`)
+        fetchTMDB(`${T}/search/movie?api_key=${API}&query=${encodeURIComponent(q)}`),
+        fetchTMDB(`${T}/search/tv?api_key=${API}&query=${encodeURIComponent(q)}`)
       ]);
       const mData = await mRes.json();
       const tData = await tRes.json();
@@ -2139,8 +2229,8 @@
     // Fetch movies & shows by provider
     try {
       const [mRes, tRes] = await Promise.all([
-        fetch(`${T}/discover/movie?api_key=${API}&with_watch_providers=${providerId}&watch_region=US&sort_by=popularity.desc`),
-        fetch(`${T}/discover/tv?api_key=${API}&with_watch_providers=${providerId}&watch_region=US&sort_by=popularity.desc`)
+        fetchTMDB(`${T}/discover/movie?api_key=${API}&with_watch_providers=${providerId}&watch_region=US&sort_by=popularity.desc`),
+        fetchTMDB(`${T}/discover/tv?api_key=${API}&with_watch_providers=${providerId}&watch_region=US&sort_by=popularity.desc`)
       ]);
       const mData = await mRes.json();
       const tData = await tRes.json();
@@ -2205,8 +2295,8 @@
     mobileSearchDebounce = setTimeout(async () => {
       try {
         const [mRes, tRes] = await Promise.all([
-          fetch(`${T}/search/movie?api_key=${API}&query=${encodeURIComponent(q)}`),
-          fetch(`${T}/search/tv?api_key=${API}&query=${encodeURIComponent(q)}`)
+          fetchTMDB(`${T}/search/movie?api_key=${API}&query=${encodeURIComponent(q)}`),
+          fetchTMDB(`${T}/search/tv?api_key=${API}&query=${encodeURIComponent(q)}`)
         ]);
         const mData = await mRes.json();
         const tData = await tRes.json();
