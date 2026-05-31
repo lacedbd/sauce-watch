@@ -574,6 +574,7 @@
                             playlist: ytKey, playsinline: 1,
                             disablekb: 1, fs: 0, modestbranding: 1
                         },
+                        let hasRevealed = false;
                         events: {
                             onReady: (e) => {
                                 e.target.mute();
@@ -586,30 +587,33 @@
                             },
                             onStateChange: (e) => {
                                 if (e.data === YT.PlayerState.PLAYING) {
+                                    if (!hasRevealed) {
+                                        clearTimeout(bgPlayTimeout);
+                                        bgPlayTimeout = setTimeout(() => {
+                                            hasRevealed = true;
+                                            const wrapper = document.getElementById('trailer-wrapper');
+                                            const staticImg = document.getElementById('backdropStatic');
+                                            if (wrapper) {
+                                                wrapper.style.transition = 'opacity 0.8s ease';
+                                                wrapper.style.opacity = '1';
+                                            }
+                                            if (staticImg) staticImg.style.opacity = '0';
+                                            const volBtn = document.getElementById('trailerVolumeBtn');
+                                            if (volBtn) volBtn.classList.remove('hidden');
+                                            if (!trailerIsPlaying) enableHeroFocusMode();
+                                        }, 4500);
+                                    }
+                                } else if (e.data === YT.PlayerState.ENDED || e.data === YT.PlayerState.UNSTARTED) {
+                                    hasRevealed = false;
                                     clearTimeout(bgPlayTimeout);
-                                    bgPlayTimeout = setTimeout(() => {
-                                        const wrapper = document.getElementById('trailer-wrapper');
-                                        const staticImg = document.getElementById('backdropStatic');
-                                        if (wrapper) {
-                                            wrapper.style.transition = 'opacity 0.8s ease';
-                                            wrapper.style.opacity = '1';
-                                        }
-                                        if (staticImg) staticImg.style.opacity = '0';
-                                        const volBtn = document.getElementById('trailerVolumeBtn');
-                                        if (volBtn) volBtn.classList.remove('hidden');
-                                        if (!trailerIsPlaying) enableHeroFocusMode();
-                                    }, 4500);
-                                } else {
                                     const wrapper = document.getElementById('trailer-wrapper');
                                     const staticImg = document.getElementById('backdropStatic');
                                     if (wrapper) wrapper.style.opacity = '0';
                                     if (staticImg) staticImg.style.opacity = '1';
                                     const volBtn = document.getElementById('trailerVolumeBtn');
                                     if (volBtn) volBtn.classList.add('hidden');
-                                    
-                                    if (e.data === YT.PlayerState.PAUSED) {
-                                        e.target.playVideo();
-                                    }
+                                } else if (e.data === YT.PlayerState.PAUSED) {
+                                    e.target.playVideo();
                                 }
                             }
                         }
@@ -1584,6 +1588,7 @@
                                                  playlist: ytKey, playsinline: 1,
                                                  disablekb: 1, fs: 0, modestbranding: 1, vq: 'small'
                                              },
+                                             let hasRevealed = false;
                                              events: {
                                                  onReady: (e) => {
                                                      e.target.unMute();
@@ -1626,17 +1631,21 @@
                                                                  icon.className = "fas fa-volume-up text-xs text-red-500";
                                                              }
                                                          }
-                                                         playTimeout = setTimeout(() => {
-                                                             if (card.matches(':hover') && trailerWrapper) {
-                                                                 trailerWrapper.style.transition = 'opacity 0.5s ease';
-                                                                 trailerWrapper.style.opacity = '1';
-                                                                 volIcon.classList.remove('opacity-0');
-                                                                 spinner.classList.add('opacity-0');
-                                                                 if (cardLogo) cardLogo.classList.add('opacity-0');
-                                                             }
-                                                         }, 4500);
-                                                     } else {
+                                                         if (!hasRevealed) {
+                                                             playTimeout = setTimeout(() => {
+                                                                 if (card.matches(':hover') && trailerWrapper) {
+                                                                     hasRevealed = true;
+                                                                     trailerWrapper.style.transition = 'opacity 0.5s ease';
+                                                                     trailerWrapper.style.opacity = '1';
+                                                                     volIcon.classList.remove('opacity-0');
+                                                                     spinner.classList.add('opacity-0');
+                                                                     if (cardLogo) cardLogo.classList.add('opacity-0');
+                                                                 }
+                                                             }, 4500);
+                                                         }
+                                                     } else if (e.data === YT.PlayerState.ENDED || e.data === YT.PlayerState.UNSTARTED) {
                                                          clearTimeout(playTimeout);
+                                                         hasRevealed = false;
                                                          if (trailerWrapper) {
                                                              trailerWrapper.style.opacity = '0.01';
                                                          }
@@ -1646,9 +1655,8 @@
                                                          if (cardLogo) {
                                                              cardLogo.classList.remove('opacity-0');
                                                          }
-                                                         if (e.data === YT.PlayerState.PAUSED) {
-                                                             e.target.playVideo();
-                                                         }
+                                                     } else if (e.data === YT.PlayerState.PAUSED) {
+                                                         e.target.playVideo();
                                                      }
                                                  }
                                              }
