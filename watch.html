@@ -542,6 +542,57 @@
             });
         }
 
+        let ytPlayer = null;
+
+        function setupYoutubeTrailerPlayer(ytKey) {
+            const wrapper = document.getElementById('trailer-wrapper');
+            if (!wrapper) return;
+            
+            // Remove the video element if it exists and replace with empty div for YouTube player
+            wrapper.innerHTML = `<div id="youtube-player" class="w-full h-full pointer-events-none"></div>`;
+            
+            // Load YouTube Iframe API if not loaded
+            if (!window.YT) {
+                const tag = document.createElement('script');
+                tag.src = "https://www.youtube.com/iframe_api";
+                const firstScriptTag = document.getElementsByTagName('script')[0];
+                firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+            }
+            
+            const checkYT = setInterval(() => {
+                if (window.YT && window.YT.Player) {
+                    clearInterval(checkYT);
+                    ytPlayer = new YT.Player('youtube-player', {
+                        videoId: ytKey,
+                        width: '100%',
+                        height: '100%',
+                        playerVars: {
+                            autoplay: 1, mute: 1, controls: 0, showinfo: 0,
+                            rel: 0, iv_load_policy: 3, loop: 1,
+                            playlist: ytKey, playsinline: 1,
+                            disablekb: 1, fs: 0, modestbranding: 1
+                        },
+                        events: {
+                            onReady: (e) => {
+                                e.target.mute();
+                                e.target.playVideo();
+                                wrapper.style.transition = 'opacity 0.8s ease';
+                                wrapper.style.opacity = '1';
+                                const staticImg = document.getElementById('backdropStatic');
+                                if (staticImg) staticImg.style.opacity = '0';
+                                const volBtn = document.getElementById('trailerVolumeBtn');
+                                if (volBtn) volBtn.classList.remove('hidden');
+                                if (!trailerIsPlaying) enableHeroFocusMode();
+                            },
+                            onStateChange: (e) => {
+                                if (e.data === YT.PlayerState.PAUSED) e.target.playVideo();
+                            }
+                        }
+                    });
+                }
+            }, 100);
+        }
+
         async function fetchAndSetupTrailerBackground() {
             try {
                 const res = await fetchTMDB(`${TMDB_BASE}/${currentType}/${currentMovieId}/videos`);
@@ -557,6 +608,9 @@
                     if (proxyData.url) {
                         setupNativeTrailerPlayer(proxyData.url);
                         return;
+                    } else {
+                        setupYoutubeTrailerPlayer(trailer.key);
+                        return;
                     }
                 }
             } catch (err) {
@@ -565,13 +619,23 @@
             setupNativeTrailerPlayer(IMDB_TRAILER_URL);
         }
 
-        // Toggle volume for native trailer
+        // Toggle volume for native trailer or youtube trailer
         document.getElementById('trailerVolumeBtn').addEventListener('click', (e) => {
             if (e) e.stopPropagation(); // Avoid triggering parent clicks
-            const videoEl = document.getElementById('trailer-video');
-            if (!videoEl) return;
             isMuted = !isMuted;
-            videoEl.muted = isMuted;
+            
+            const videoEl = document.getElementById('trailer-video');
+            if (videoEl) {
+                videoEl.muted = isMuted;
+            }
+            if (ytPlayer && typeof ytPlayer.mute === 'function') {
+                if (isMuted) {
+                    ytPlayer.mute();
+                } else {
+                    ytPlayer.unMute();
+                }
+            }
+            
             const volumeIcon = document.getElementById('volumeIcon');
             if (isMuted) {
                 volumeIcon.className = "fas fa-volume-mute text-sm";
@@ -911,10 +975,20 @@
             if (heroSec) {
                 heroSec.addEventListener('click', (e) => {
                     if (e.target.closest('button') || e.target.closest('a')) return;
-                    const videoEl = document.getElementById('trailer-video');
-                    if (!videoEl) return;
                     isMuted = !isMuted;
-                    videoEl.muted = isMuted;
+                    
+                    const videoEl = document.getElementById('trailer-video');
+                    if (videoEl) {
+                        videoEl.muted = isMuted;
+                    }
+                    if (ytPlayer && typeof ytPlayer.mute === 'function') {
+                        if (isMuted) {
+                            ytPlayer.mute();
+                        } else {
+                            ytPlayer.unMute();
+                        }
+                    }
+                    
                     const volumeIcon = document.getElementById('volumeIcon');
                     if (isMuted) {
                         volumeIcon.className = "fas fa-volume-mute text-sm";
@@ -1408,15 +1482,66 @@
                         if (!('ontouchstart' in window)) {
                             let hoverTimer = null;
                             let cardVideoEl = null;
+                            let cardYtPlayer = null;
                             const trailerWrapper = card.querySelector(`#trailer-wrapper-${item.id}`);
                             const videoPlayer = card.querySelector(`#trailer-player-${item.id}`);
                             const volIcon = card.querySelector(`#volIcon-${item.id}`);
                             const spinner = card.querySelector(`#hover-spinner-${item.id}`);
                             const cardLogo = card.querySelector(`#logo-${item.id}`);
 
+                            function loadYoutubeHoverTrailer(ytKey) {
+                                trailerWrapper.innerHTML = `<div id="yt-hover-${item.id}" class="w-full h-full pointer-events-none"></div>`;
+                                
+                                if (!window.YT) {
+                                    const tag = document.createElement('script');
+                                    tag.src = "https://www.youtube.com/iframe_api";
+                                    const firstScriptTag = document.getElementsByTagName('script')[0];
+                                    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+                                }
+                                
+                                const checkYT = setInterval(() => {
+                                    if (window.YT && window.YT.Player) {
+                                        clearInterval(checkYT);
+                                        if (!card.matches(':hover')) return; // Abort if user left
+                                        
+                                        cardYtPlayer = new YT.Player(`yt-hover-${item.id}`, {
+                                            videoId: ytKey,
+                                            width: '100%',
+                                            height: '100%',
+                                            playerVars: {
+                                                autoplay: 1, mute: 1, controls: 0, showinfo: 0,
+                                                rel: 0, iv_load_policy: 3, loop: 1,
+                                                playlist: ytKey, playsinline: 1,
+                                                disablekb: 1, fs: 0, modestbranding: 1, vq: 'small'
+                                            },
+                                            events: {
+                                                onReady: (e) => {
+                                                    e.target.mute();
+                                                    e.target.playVideo();
+                                                },
+                                                onStateChange: (e) => {
+                                                    if (e.data === YT.PlayerState.PLAYING) {
+                                                        setTimeout(() => {
+                                                            if (card.matches(':hover') && trailerWrapper) {
+                                                                trailerWrapper.style.transition = 'opacity 0.5s ease';
+                                                                trailerWrapper.style.opacity = '1';
+                                                                volIcon.classList.remove('opacity-0');
+                                                                spinner.classList.add('opacity-0');
+                                                                if (cardLogo) cardLogo.classList.add('opacity-0');
+                                                            }
+                                                        }, 500);
+                                                    }
+                                                    if (e.data === YT.PlayerState.PAUSED) e.target.playVideo();
+                                                }
+                                            }
+                                        });
+                                    }
+                                }, 100);
+                            }
+
                             card.addEventListener('mouseenter', () => {
                                 hoverTimer = setTimeout(async () => {
-                                    if (cardVideoEl) {
+                                    if (cardVideoEl || cardYtPlayer) {
                                         trailerWrapper.style.opacity = '1';
                                         volIcon.classList.remove('opacity-0');
                                         if (cardLogo) cardLogo.classList.add('opacity-0');
@@ -1431,32 +1556,34 @@
                                         const vids = vidData.results || [];
                                         const trailer = vids.find(v => v.type === 'Trailer' && v.site === 'YouTube') || vids.find(v => v.site === 'YouTube');
                                         
-                                        let finalUrl = IMDB_TRAILER_URL;
                                         if (trailer) {
                                             const proxyRes = await fetch(`/api/trailer?id=${trailer.key}`);
                                             const proxyData = await proxyRes.json();
+                                            
                                             if (proxyData.url) {
-                                                finalUrl = proxyData.url;
-                                            }
-                                        }
-                                        
-                                        videoPlayer.src = finalUrl;
-                                        cardVideoEl = videoPlayer;
-                                        
-                                        videoPlayer.onloadeddata = () => {
-                                            if (card.matches(':hover') && trailerWrapper) {
-                                                trailerWrapper.style.transition = 'opacity 0.5s ease';
-                                                trailerWrapper.style.opacity = '1';
-                                                volIcon.classList.remove('opacity-0');
-                                                spinner.classList.add('opacity-0');
-                                                if (cardLogo) cardLogo.classList.add('opacity-0');
-                                            }
-                                        };
+                                                videoPlayer.src = proxyData.url;
+                                                cardVideoEl = videoPlayer;
+                                                
+                                                videoPlayer.onloadeddata = () => {
+                                                    if (card.matches(':hover') && trailerWrapper) {
+                                                        trailerWrapper.style.transition = 'opacity 0.5s ease';
+                                                        trailerWrapper.style.opacity = '1';
+                                                        volIcon.classList.remove('opacity-0');
+                                                        spinner.classList.add('opacity-0');
+                                                        if (cardLogo) cardLogo.classList.add('opacity-0');
+                                                    }
+                                                };
 
-                                        videoPlayer.play().catch(e => {
-                                            console.error("Card trailer autoplay failed:", e);
+                                                videoPlayer.play().catch(e => {
+                                                    console.error("Card trailer autoplay failed:", e);
+                                                    spinner.classList.add('opacity-0');
+                                                });
+                                            } else {
+                                                loadYoutubeHoverTrailer(trailer.key);
+                                            }
+                                        } else {
                                             spinner.classList.add('opacity-0');
-                                        });
+                                        }
                                     } catch (err) {
                                         console.error('Failed to load card hover trailer:', err);
                                         spinner.classList.add('opacity-0');
@@ -1475,6 +1602,11 @@
                                     cardVideoEl.pause();
                                     cardVideoEl.src = '';
                                     cardVideoEl = null;
+                                }
+                                if (cardYtPlayer && typeof cardYtPlayer.destroy === 'function') {
+                                    cardYtPlayer.destroy();
+                                    cardYtPlayer = null;
+                                    trailerWrapper.innerHTML = `<video id="trailer-player-${item.id}" class="w-full h-full object-cover pointer-events-none" loop muted playsinline></video>`;
                                 }
                             });
                         }
