@@ -186,10 +186,7 @@
         <div id="ambientBackdrop" class="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
             <!-- Scaled container to push UI out of bounds. Hidden initially with 0.01 opacity to bypass iOS Safari rendering block. -->
             <div id="trailer-wrapper" class="absolute top-1/2 left-1/2 w-[300vh] h-[150vh] md:w-[150vw] md:h-[150vh] -translate-x-1/2 -translate-y-1/2 z-0 transition-opacity duration-1000" style="opacity: 0.01;">
-                <!-- YouTube iframe injected by API -->
-                <div id="youtube-player" class="w-full h-full pointer-events-none"></div>
-                <!-- Solid overlay to permanently block ALL YouTube UI (title, play button, logo, watermark) -->
-                <div class="absolute inset-0 z-10 pointer-events-none" style="background: transparent;"></div>
+                <video id="trailer-video" class="w-full h-full object-cover pointer-events-none" autoplay muted loop playsinline></video>
             </div>
         </div>
 
@@ -331,8 +328,8 @@
             <div class="flex items-center gap-2 border-l-2 border-red-600 pl-3">
                 <h2 class="text-2xl font-bold text-white">You may like</h2>
             </div>
-            <!-- Changed grid to better fit landscape cards -->
-            <div id="recommendationsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <!-- Vertical posters layout -->
+            <div id="recommendationsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
                 <!-- Injected dynamically -->
             </div>
             <!-- Invisible trigger element for IntersectionObserver -->
@@ -517,109 +514,51 @@
         let activeEpisodeNum = 1;
 
 
-        // YouTube IFrame Player API
-        let trailerPlayer;
-        let ytApiReady = false;
-        let pendingTrailerKey = '';
+        const IMDB_TRAILER_URL = "https://imdb-video.media-imdb.com/mc/vi3273902873/vi3273902873_1080p.mp4?Expires=1780279916&Signature=u3cCZUzfwIkqwy6n0X5vCdFXS3QlrLkwEZXkolvRn2d0EAJYF1HRZjuJ~w21zArQpTMXZfZ-mAh~ReJYyckTg-DFp9VA4Pm2meaqGeSKFP~4GrDVfSRUkAZkdQFByNAkqzQYtOIcev10mVNnOkulAa7unz~4EyqRhtH87Vxe9K9jtK1pbWm8AOXYdCrqG~vIx0H5s~jkwTuuFZqxujZcWMFIHVDbcydx69gAH1vz8WZiSQXxzwnriQ2WUeXRhLg0l9rhdgNU2QB0nWK0cyH2hPEHepITdZEX6AnL5yN0wgdE~VBUGQPU7kQ6cdPKQjxS5h1rRY1B3m18vG9k2VLbFw__&Key-Pair-Id=APKAIFLZBVQZ24NQH3KA";
 
-        // Load YouTube IFrame Player API script
-        const tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        const firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-        window.onYouTubeIframeAPIReady = () => {
-            ytApiReady = true;
-            if (pendingTrailerKey) setupTrailerPlayer(pendingTrailerKey);
-        };
-
-        function setupTrailerPlayer(videoKey) {
-            trailerPlayer = new YT.Player('youtube-player', {
-                width: '1920',
-                height: '1080',
-                videoId: videoKey,
-                playerVars: {
-                    autoplay: 1,
-                    mute: 1,
-                    controls: 0,
-                    showinfo: 0,
-                    rel: 0,
-                    iv_load_policy: 3,
-                    loop: 1,
-                    playlist: videoKey,
-                    playsinline: 1,
-                    disablekb: 1,
-                    fs: 0,
-                    modestbranding: 1,
-                    vq: 'hd720'
-                },
-                events: {
-                    onReady: (event) => {
-                        event.target.mute();
-                        event.target.playVideo();
-                    },
-                    onStateChange: (event) => {
-                        const wrapper = document.getElementById('trailer-wrapper');
-                        const staticImg = document.getElementById('backdropStatic');
-                        if (event.data === YT.PlayerState.PLAYING) {
-                            if (!wrapper.dataset.hasPlayed) {
-                                wrapper.dataset.hasPlayed = "true";
-                                // Wait 1.5s — just enough for the iframe to render but short enough to feel instant
-                                setTimeout(() => {
-                                    wrapper.style.transition = 'opacity 1s ease';
-                                    wrapper.style.opacity = '1';
-                                    if (staticImg) staticImg.style.opacity = '0';
-                                    document.getElementById('trailerVolumeBtn').classList.remove('hidden');
-                                    if (!trailerIsPlaying) enableHeroFocusMode();
-                                }, 1500);
-                            } else {
-                                setTimeout(() => {
-                                    wrapper.style.transition = 'opacity 1s ease';
-                                    wrapper.style.opacity = '1';
-                                }, 1500);
-                            }
-                        }
-                        if (event.data === YT.PlayerState.PAUSED) {
-                            if (wrapper) { wrapper.style.transition = 'none'; wrapper.style.opacity = '0.01'; }
-                            event.target.playVideo();
-                        }
-                    }
+        function setupNativeTrailerPlayer() {
+            const videoEl = document.getElementById('trailer-video');
+            if (!videoEl) return;
+            videoEl.src = IMDB_TRAILER_URL;
+            videoEl.muted = isMuted;
+            videoEl.loop = true;
+            
+            // Once the video metadata / first frame loads, fade it in smoothly
+            videoEl.onloadeddata = () => {
+                const wrapper = document.getElementById('trailer-wrapper');
+                const staticImg = document.getElementById('backdropStatic');
+                if (wrapper) {
+                    wrapper.style.transition = 'opacity 0.8s ease';
+                    wrapper.style.opacity = '1';
                 }
+                if (staticImg) staticImg.style.opacity = '0';
+                const volBtn = document.getElementById('trailerVolumeBtn');
+                if (volBtn) volBtn.classList.remove('hidden');
+                if (!trailerIsPlaying) enableHeroFocusMode();
+            };
+
+            videoEl.play().catch(err => {
+                console.error("Native trailer autoplay failed:", err);
             });
         }
 
         async function fetchAndSetupTrailerBackground() {
-            try {
-                const res = await fetchTMDB(`${TMDB_BASE}/${currentType}/${currentMovieId}/videos?api_key=${TMDB_API_KEY}`);
-                const data = await res.json();
-                const videos = data.results || [];
-                const trailer = videos.find(v => v.site === 'YouTube' && v.type === 'Trailer') ||
-                                videos.find(v => v.site === 'YouTube' && v.type === 'Teaser') ||
-                                videos.find(v => v.site === 'YouTube');
-                if (!trailer) return;
-                const playerContainer = document.getElementById('trailer-wrapper');
-                if (!playerContainer) return;
-                if (ytApiReady) {
-                    setupTrailerPlayer(trailer.key);
-                } else {
-                    pendingTrailerKey = trailer.key;
-                }
-            } catch (err) {
-                console.error('Failed to load background trailer:', err);
-            }
+            // Sourced directly from the high-speed IMDb MP4 link
+            setupNativeTrailerPlayer();
         }
 
-        // Toggle volume for YouTube trailer
-        document.getElementById('trailerVolumeBtn').addEventListener('click', () => {
-            if (!trailerPlayer || typeof trailerPlayer.mute !== 'function') return;
+        // Toggle volume for native trailer
+        document.getElementById('trailerVolumeBtn').addEventListener('click', (e) => {
+            if (e) e.stopPropagation(); // Avoid triggering parent clicks
+            const videoEl = document.getElementById('trailer-video');
+            if (!videoEl) return;
             isMuted = !isMuted;
+            videoEl.muted = isMuted;
             const volumeIcon = document.getElementById('volumeIcon');
             if (isMuted) {
-                trailerPlayer.mute();
-                volumeIcon.className = "fas fa-volume-mute";
+                volumeIcon.className = "fas fa-volume-mute text-sm";
             } else {
-                trailerPlayer.unMute();
-                volumeIcon.className = "fas fa-volume-up text-red-500";
+                volumeIcon.className = "fas fa-volume-up text-sm text-red-500";
             }
         });
 
@@ -842,10 +781,11 @@
 
         // Open Cinema modal player
         function openPlayerModal() {
-            if (trailerPlayer && typeof trailerPlayer.mute === 'function' && !isMuted) {
+            const videoEl = document.getElementById('trailer-video');
+            if (videoEl && !isMuted) {
                 isMuted = true;
-                trailerPlayer.mute();
-                document.getElementById('volumeIcon').className = "fas fa-volume-mute";
+                videoEl.muted = true;
+                document.getElementById('volumeIcon').className = "fas fa-volume-mute text-sm";
             }
             
             saveToHistory();
@@ -946,6 +886,25 @@
                         panel.classList.add('hidden');
                     }
                 };
+            }
+
+            // Click anywhere on hero section (excluding buttons/links) to toggle mute
+            const heroSec = document.getElementById('heroSection');
+            if (heroSec) {
+                heroSec.addEventListener('click', (e) => {
+                    if (e.target.closest('button') || e.target.closest('a')) return;
+                    const videoEl = document.getElementById('trailer-video');
+                    if (!videoEl) return;
+                    isMuted = !isMuted;
+                    videoEl.muted = isMuted;
+                    const volumeIcon = document.getElementById('volumeIcon');
+                    if (isMuted) {
+                        volumeIcon.className = "fas fa-volume-mute text-sm";
+                    } else {
+                        volumeIcon.className = "fas fa-volume-up text-sm text-red-500";
+                    }
+                    showToast(isMuted ? "Trailer Muted" : "Trailer Unmuted");
+                });
             }
         }
 
@@ -1369,14 +1328,13 @@
                     document.getElementById('recommendationsSection').classList.remove('hidden');
                     
                     items.forEach(item => {
-                        // Use backdrop_path for landscape layout
-                        if (!item.backdrop_path) return;
+                        // Use poster_path for vertical layout
+                        if (!item.poster_path) return;
                         
                         const type = item.media_type || currentType;
                         const card = document.createElement('a');
                         card.href = `watch.html?id=${item.id}&type=${type}`;
-                        // Changed to landscape wrapper (aspect-video is 16:9)
-                        card.className = "flex flex-col gap-2 group cursor-pointer w-full";
+                        card.className = "flex flex-col gap-2 group cursor-pointer w-full transition-all duration-300 hover:-translate-y-1.5";
                         
                         const rating = item.vote_average ? item.vote_average.toFixed(1) : "0.0";
                         const title = item.title || item.name;
@@ -1387,20 +1345,18 @@
                         const rtScore = Math.round(item.vote_average * 10);
 
                         card.innerHTML = `
-                            <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-zinc-800 border border-white/5 group-hover:border-white/20 transition-all shadow-lg">
-                                <img src="${POSTER_BASE}${item.backdrop_path}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
-                                <img id="logo-${item.id}" src="" class="absolute bottom-2 left-2 w-1/3 object-contain drop-shadow-md hidden z-10 pointer-events-none transition-opacity duration-500">
+                            <div class="relative w-full aspect-[2/3] rounded-xl overflow-hidden bg-zinc-900 border border-white/5 group-hover:border-white/20 transition-all duration-300 shadow-lg group-hover:shadow-2xl group-hover:shadow-black/60">
+                                <img src="${POSTER_BASE}${item.poster_path}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                                <img id="logo-${item.id}" src="" class="absolute bottom-4 left-1/2 -translate-x-1/2 w-4/5 max-h-[40px] object-contain filter drop-shadow-[0_4px_10px_rgba(0,0,0,0.85)] hidden z-10 pointer-events-none transition-opacity duration-500">
                                 <div class="absolute inset-0 flex justify-center items-center opacity-0 transition-opacity z-20 pointer-events-none" id="hover-spinner-${item.id}">
                                     <div class="w-8 h-8 border-2 border-white/20 border-t-red-600 rounded-full animate-spin"></div>
                                 </div>
                                 <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-white flex items-center gap-1 opacity-0 transition-opacity z-10" id="volIcon-${item.id}">
                                     <i class="fas fa-volume-mute text-xs"></i>
                                 </div>
-                                <!-- YouTube hover trailer -->
-                                <div id="trailer-wrapper-${item.id}" class="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-0 transition-opacity duration-700" style="opacity: 0.01;">
-                                    <div id="trailer-player-${item.id}" class="w-full h-full pointer-events-none"></div>
-                                    <!-- Overlay to block YouTube UI -->
-                                    <div class="absolute inset-0 z-10 pointer-events-none"></div>
+                                <!-- Native HTML5 hover trailer -->
+                                <div id="trailer-wrapper-${item.id}" class="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-0 transition-opacity duration-300" style="opacity: 0.01;">
+                                    <video id="trailer-player-${item.id}" class="w-full h-full object-cover pointer-events-none" loop muted playsinline></video>
                                 </div>
                             </div>
                             <div class="px-1 mt-2">
@@ -1433,16 +1389,16 @@
                         // Add Hover Trailer Logic (only on desktop/non-touch)
                         if (!('ontouchstart' in window)) {
                             let hoverTimer = null;
-                            let cardYtPlayer = null;
+                            let cardVideoEl = null;
                             const trailerWrapper = card.querySelector(`#trailer-wrapper-${item.id}`);
-                            const trailerPlayerDiv = card.querySelector(`#trailer-player-${item.id}`);
+                            const videoPlayer = card.querySelector(`#trailer-player-${item.id}`);
                             const volIcon = card.querySelector(`#volIcon-${item.id}`);
                             const spinner = card.querySelector(`#hover-spinner-${item.id}`);
                             const cardLogo = card.querySelector(`#logo-${item.id}`);
 
                             card.addEventListener('mouseenter', () => {
                                 hoverTimer = setTimeout(async () => {
-                                    if (cardYtPlayer) {
+                                    if (cardVideoEl) {
                                         trailerWrapper.style.opacity = '1';
                                         volIcon.classList.remove('opacity-0');
                                         if (cardLogo) cardLogo.classList.add('opacity-0');
@@ -1452,45 +1408,26 @@
                                     spinner.classList.remove('opacity-0');
                                     
                                     try {
-                                        const vidRes = await fetchTMDB(`${TMDB_BASE}/${type}/${item.id}/videos?api_key=${TMDB_API_KEY}`);
-                                        const vidData = await vidRes.json();
-                                        const vids = vidData.results || [];
-                                        const trailer = vids.find(v => v.type === 'Trailer' && v.site === 'YouTube') || vids.find(v => v.site === 'YouTube');
+                                        // Directly play the high-speed IMDb MP4 link
+                                        videoPlayer.src = IMDB_TRAILER_URL;
+                                        cardVideoEl = videoPlayer;
                                         
-                                        if (trailer && ytApiReady) {
-                                            cardYtPlayer = new YT.Player(`trailer-player-${item.id}`, {
-                                                videoId: trailer.key,
-                                                width: '100%',
-                                                height: '100%',
-                                                playerVars: {
-                                                    autoplay: 1, mute: 1, controls: 0, showinfo: 0,
-                                                    rel: 0, iv_load_policy: 3, loop: 1,
-                                                    playlist: trailer.key, playsinline: 1,
-                                                    disablekb: 1, fs: 0, modestbranding: 1, vq: 'small'
-                                                },
-                                                events: {
-                                                    onReady: (e) => { e.target.mute(); e.target.playVideo(); },
-                                                    onStateChange: (e) => {
-                                                        if (e.data === YT.PlayerState.PLAYING) {
-                                                            setTimeout(() => {
-                                                                if (card.matches(':hover') && trailerWrapper) {
-                                                                    trailerWrapper.style.transition = 'opacity 0.8s ease';
-                                                                    trailerWrapper.style.opacity = '1';
-                                                                    volIcon.classList.remove('opacity-0');
-                                                                    spinner.classList.add('opacity-0');
-                                                                    if (cardLogo) cardLogo.classList.add('opacity-0');
-                                                                }
-                                                            }, 2000);
-                                                        }
-                                                        if (e.data === YT.PlayerState.PAUSED) e.target.playVideo();
-                                                    }
-                                                }
-                                            });
-                                        } else {
+                                        videoPlayer.onloadeddata = () => {
+                                            if (card.matches(':hover') && trailerWrapper) {
+                                                trailerWrapper.style.transition = 'opacity 0.5s ease';
+                                                trailerWrapper.style.opacity = '1';
+                                                volIcon.classList.remove('opacity-0');
+                                                spinner.classList.add('opacity-0');
+                                                if (cardLogo) cardLogo.classList.add('opacity-0');
+                                            }
+                                        };
+
+                                        videoPlayer.play().catch(e => {
+                                            console.error("Card trailer autoplay failed:", e);
                                             spinner.classList.add('opacity-0');
-                                        }
+                                        });
                                     } catch (err) {
-                                        console.error('Failed to load hover trailer:', err);
+                                        console.error('Failed to load card hover trailer:', err);
                                         spinner.classList.add('opacity-0');
                                     }
                                 }, 500); // 500ms hover intent delay
@@ -1503,12 +1440,10 @@
                                 trailerWrapper.style.transition = 'none';
                                 trailerWrapper.style.opacity = '0.01';
                                 volIcon.classList.add('opacity-0');
-                                // Destroy iframe after fade out to save resources
-                                if (cardYtPlayer && typeof cardYtPlayer.destroy === 'function') {
-                                    cardYtPlayer.destroy();
-                                    cardYtPlayer = null;
-                                    // re-create the div for next time since destroy() removes the iframe
-                                    trailerWrapper.innerHTML = `<div id="trailer-player-${item.id}" class="w-full h-full pointer-events-none"></div>`;
+                                if (cardVideoEl) {
+                                    cardVideoEl.pause();
+                                    cardVideoEl.src = '';
+                                    cardVideoEl = null;
                                 }
                             });
                         }
