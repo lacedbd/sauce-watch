@@ -1,24 +1,41 @@
-export default async function handler(req, res) {
+export const config = {
+  runtime: 'edge',
+};
+
+export default async function handler(request) {
+  const url = new URL(request.url);
+  
   // CORS support
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
   }
 
-  const { path, ...params } = req.query;
+  const path = url.searchParams.get('path');
   if (!path) {
-    return res.status(400).json({ error: 'Missing path parameter' });
+    return new Response(JSON.stringify({ error: 'Missing path parameter' }), {
+      status: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
   }
 
-  const TMDB_API_KEY = process.env.TMDB_API_KEY || '607bf14c16a8ab16f9ed61e6ba5920a7';
+  const TMDB_API_KEY = '607bf14c16a8ab16f9ed61e6ba5920a7';
   const searchParams = new URLSearchParams();
   
   // Forward all query parameters except 'path'
-  for (const [key, value] of Object.entries(params)) {
-    searchParams.set(key, value);
+  for (const [key, value] of url.searchParams.entries()) {
+    if (key !== 'path') {
+      searchParams.set(key, value);
+    }
   }
   searchParams.set('api_key', TMDB_API_KEY);
 
@@ -27,14 +44,34 @@ export default async function handler(req, res) {
   try {
     const apiRes = await fetch(tmdbUrl);
     if (!apiRes.ok) {
-      return res.status(apiRes.status).json({ error: `TMDB responded with status ${apiRes.status}` });
+      return new Response(JSON.stringify({ error: `TMDB responded with status ${apiRes.status}` }), {
+        status: apiRes.status,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
     }
     const data = await apiRes.json();
 
-    // Cache the response at the edge for 1 hour, stale-while-revalidate for 10 minutes
-    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=600');
-    return res.status(200).json(data);
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        // Cache the response at the edge for 1 hour, stale-while-revalidate for 10 minutes
+        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600',
+      },
+    });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
   }
 }
