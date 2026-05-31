@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Explore — sauce.watch</title>
+  <link rel="icon" href="logo.jpg" type="image/jpeg">
+  <meta name="description" content="Discover movies and TV shows with advanced filters on sauce.watch.">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } }
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ea-sp: cubic-bezier(0.28, 0.11, 0.32, 1.00);
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: #0d0d0f;
+      color: #fafafa;
+      -webkit-font-smoothing: antialiased;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 99px; }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* ── Navbar ── */
+    #mainNav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      padding: 14px 40px;
+      background: rgba(13,13,15,0.92);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    @media (max-width: 767px) { #mainNav { padding: 12px 16px; } }
+
+    /* ── Search Bar ── */
+    .search-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 12px 18px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .search-bar:focus-within {
+      border-color: rgba(255,255,255,0.18);
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.03);
+    }
+    .search-bar input {
+      flex: 1; background: transparent; border: none; outline: none;
+      font-size: 15px; color: #fff; font-family: 'Inter', sans-serif;
+    }
+    .search-bar input::placeholder { color: rgba(255,255,255,0.25); }
+
+    /* ── Filter Row ── */
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-select {
+      position: relative;
+    }
+
+    .filter-select select {
+      appearance: none;
+      -webkit-appearance: none;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 9px 36px 9px 14px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      outline: none;
+      min-width: 120px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .filter-select select:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.15);
+    }
+    .filter-select select:focus {
+      border-color: rgba(255,255,255,0.2);
+    }
+    .filter-select select option {
+      background: #1a1a1e;
+      color: #fff;
+      padding: 8px;
+    }
+    .filter-select::after {
+      content: '';
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0; height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 5px solid rgba(255,255,255,0.35);
+      pointer-events: none;
+    }
+    .filter-select.active-filter select {
+      border-color: rgba(239, 68, 68, 0.4) !important;
+      color: #ef4444 !important;
+      background: rgba(239, 68, 68, 0.05) !important;
+    }
+    .filter-select.active-filter::after {
+      border-top-color: rgba(239, 68, 68, 0.8) !important;
+    }
+
+    .reset-btn {
+      padding: 9px 20px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: 8px;
+      color: #ef4444;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .reset-btn:hover {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fff;
+    }
+    .reset-btn:active { transform: scale(0.96); }
+
+    .surprise-btn {
+      padding: 9px 20px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .surprise-btn:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.2);
+    }
+    .surprise-btn:active { transform: scale(0.96); }
+
+    @media (max-width: 767px) {
+      .filter-row {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        width: 100% !important;
+        margin-top: 14px !important;
+      }
+      .filter-select {
+        width: 100% !important;
+      }
+      .filter-select select {
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+      .col-span-2-mobile {
+        grid-column: span 2 !important;
+      }
+      .reset-btn, .surprise-btn {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        margin: 0 !important;
+      }
+      .result-info {
+        margin-top: 24px !important;
+      }
+    }
+
+    /* ── Results Grid ── */
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 640px) {
+      .results-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    }
+    @media (max-width: 400px) {
+      .results-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ── Poster Card ── */
+    .poster-card {
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.2s var(--ea-sp);
+      background: #18181b;
+    }
+    .poster-card:hover { transform: scale(1.03); }
+    .poster-card img {
+      width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block;
+    }
+    .poster-card .card-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 50%);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .poster-card:hover .card-overlay { opacity: 1; }
+    .poster-card .card-bottom {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 10px;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .poster-card:hover .card-bottom { opacity: 1; transform: translateY(0); }
+    .poster-card .card-title {
+      font-size: 12px; font-weight: 700; color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .poster-card .card-year {
+      font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 2px;
+    }
+
+    /* Rating badge */
+    .rating-badge {
+      position: absolute;
+      top: 8px; right: 8px;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+      border-radius: 6px;
+      padding: 3px 7px;
+      display: flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 700; color: #fff;
+    }
+    .rating-badge .star { color: #facc15; font-size: 9px; }
+
+    /* Bookmark */
+    .bookmark-btn {
+      position: absolute;
+      top: 8px; left: 8px;
+      width: 28px; height: 28px;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(8px);
+      border: none;
+      border-radius: 6px;
+      color: rgba(255,255,255,0.6);
+      font-size: 12px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    .bookmark-btn:hover { background: rgba(0,0,0,0.75); color: #fff; }
+    .bookmark-btn.saved { color: #facc15; }
+
+    /* ── Skeleton ── */
+    .skeleton {
+      background: linear-gradient(90deg, #18181b 25%, #222225 50%, #18181b 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 10px;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .skeleton-poster { aspect-ratio: 2/3; }
+
+    /* ── Loading spinner ── */
+    .load-more-btn {
+      display: none;
+      margin: 28px auto 0;
+      padding: 10px 28px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      color: rgba(255,255,255,0.6);
+      font-size: 13px; font-weight: 600;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.15s;
+    }
+    .load-more-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+    /* ── Active filters indicator ── */
+    .active-count {
+      position: absolute;
+      top: -4px; right: -4px;
+      width: 14px; height: 14px;
+      background: #dc2626;
+      border-radius: 99px;
+      font-size: 8px; font-weight: 800;
+      display: none;
+      align-items: center; justify-content: center;
+      color: #fff;
+      pointer-events: none;
+    }
+
+    /* ── Mobile Nav ── */
+    #mobileNav {
+      display: none; position: fixed; bottom: 16px; left: 50%;
+      transform: translate(-50%, 100px); opacity: 0; pointer-events: none;
+      z-index: 300; background: rgba(15,15,18,0.92);
+      backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 999px; padding: 5px 6px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      gap: 2px; transition: transform 0.4s var(--ea-sp), opacity 0.3s;
+    }
+    #mobileNav.visible { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+    @media (max-width: 767px) { #mobileNav { display: flex; } main { padding-bottom: 96px; } }
+    .mob-nav-btn {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 2px; padding: 5px 12px;
+      border-radius: 999px; border: none; background: transparent;
+      color: rgba(255,255,255,0.45); cursor: pointer;
+      font-family: 'Inter', sans-serif; text-decoration: none;
+      transition: background 0.18s, color 0.18s;
+    }
+    .mob-nav-btn:hover, .mob-nav-btn.active { background: rgba(255,255,255,0.08); color: #fff; }
+    .mob-nav-btn.active .mob-nav-dot { width: 3px; height: 3px; background: #e11d48; border-radius: 99px; display: block; margin-top: 1px; }
+    .mob-nav-btn:not(.active) .mob-nav-dot { display: none; }
+    .mob-nav-btn i { font-size: 15px; line-height: 1; }
+    .mob-nav-btn span { font-size: 9px; font-weight: 600; line-height: 1; }
+
+    /* ── Result count ── */
+    .result-info {
+      font-size: 13px; color: rgba(255,255,255,0.35);
+      margin-bottom: 16px; font-weight: 500;
+    }
+    .result-info strong { color: rgba(255,255,255,0.7); font-weight: 700; }
+
+    /* ── No results ── */
+    .empty-state {
+      text-align: center; padding: 80px 20px; color: rgba(255,255,255,0.2);
+    }
+    .empty-state i { font-size: 40px; margin-bottom: 14px; display: block; }
+    .empty-state p { font-size: 15px; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<!-- ── NAVBAR ── -->
+<nav id="mainNav">
+  <div class="flex items-center justify-between max-w-[1440px] mx-auto">
+    <div class="flex items-center gap-8">
+      <a href="index.html" class="flex items-center">
+        <img src="logo.jpg" alt="sauce.watch logo" class="w-12 h-12 rounded-xl object-cover hover:scale-105 transition-transform duration-200 shadow-md">
+      </a>
+      <div class="hidden md:flex items-center gap-6 text-sm font-medium text-zinc-400">
+        <a href="index.html" class="hover:text-white transition-colors">Home</a>
+        <a href="index.html" class="hover:text-white transition-colors">Movies</a>
+        <a href="index.html" class="hover:text-white transition-colors">TV Shows</a>
+        <a href="index.html" class="hover:text-white transition-colors">Trending</a>
+        <a href="explore.html" class="text-white font-semibold transition-colors">Explore</a>
+      </div>
+    </div>
+    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-red-500 to-rose-800 flex items-center justify-center font-bold text-sm cursor-pointer select-none">S</div>
+  </div>
+</nav>
+
+<main style="padding-top: 72px;">
+
+  <!-- ── SEARCH + FILTERS ── -->
+  <div class="max-w-[1440px] mx-auto px-5 md:px-14 pt-6 pb-4">
+
+    <!-- Search Bar -->
+    <div class="search-bar" id="searchBarEl">
+      <i class="fas fa-search" style="color:rgba(255,255,255,0.25); font-size:15px;"></i>
+      <input id="mainSearchInput" type="search" placeholder="Search..." autocomplete="off" autofocus />
+    </div>
+
+    <!-- Filter Dropdowns -->
+    <div class="filter-row" id="filterRow">
+
+      <div class="filter-select">
+        <select id="filterCategory">
+          <option value="all">Category</option>
+          <option value="trending">Trending Today</option>
+          <option value="now_playing">Now in Theaters</option>
+          <option value="popular_movies">Popular Movies</option>
+          <option value="popular_tv">Popular TV Shows</option>
+          <option value="top_rated">Top Rated</option>
+          <option value="upcoming">Latest Releases</option>
+          <option value="netflix">Netflix Originals</option>
+          <option value="disney">Disney+ Shows</option>
+          <option value="awards">Award Winning</option>
+          <option value="continue">Continue Watching</option>
+          <option value="mylist">My List</option>
+        </select>
+      </div>
+
+      <div class="filter-select">
+        <select id="filterType">
+          <option value="all">Type</option>
+          <option value="movie">Movie</option>
+          <option value="tv">TV Show</option>
+        </select>
+      </div>
+
+      <div class="filter-select">
+        <select id="filterGenre">
+          <option value="all">Genre</option>
+        </select>
+      </div>
+
+      <div class="filter-select">
+        <select id="filterSort">
+          <option value="popularity.desc">Popular</option>
+          <option value="vote_average.desc">Top Rated</option>
+          <option value="primary_release_date.desc">Newest</option>
+          <option value="primary_release_date.asc">Oldest</option>
+          <option value="revenue.desc">Revenue</option>
+        </select>
+      </div>
+
+      <div class="filter-select">
+        <select id="filterYear">
+          <option value="all">Year</option>
+        </select>
+      </div>
+
+      <div class="filter-select">
+        <select id="filterCountry">
+          <option value="all">Country</option>
+          <option value="US">United States</option>
+          <option value="GB">United Kingdom</option>
+          <option value="KR">South Korea</option>
+          <option value="JP">Japan</option>
+          <option value="IN">India</option>
+          <option value="FR">France</option>
+          <option value="DE">Germany</option>
+          <option value="ES">Spain</option>
+          <option value="IT">Italy</option>
+          <option value="CN">China</option>
+          <option value="CA">Canada</option>
+          <option value="AU">Australia</option>
+          <option value="BR">Brazil</option>
+          <option value="MX">Mexico</option>
+          <option value="TR">Turkey</option>
+          <option value="TH">Thailand</option>
+          <option value="PH">Philippines</option>
+          <option value="NG">Nigeria</option>
+        </select>
+      </div>
+
+      <div class="filter-select">
+        <select id="filterRating">
+          <option value="all">Ratings</option>
+          <option value="9">9+ Masterpiece</option>
+          <option value="8">8+ Great</option>
+          <option value="7">7+ Good</option>
+          <option value="6">6+ Fair</option>
+          <option value="5">5+ Average</option>
+        </select>
+      </div>
+
+      <div class="filter-select col-span-2-mobile">
+        <select id="filterPlatform">
+          <option value="all">Platform</option>
+          <option value="8">Netflix</option>
+          <option value="9">Amazon Prime</option>
+          <option value="337">Disney+</option>
+          <option value="1899">Max (HBO)</option>
+          <option value="350">Apple TV+</option>
+          <option value="15">Hulu</option>
+          <option value="386">Peacock</option>
+          <option value="283">Crunchyroll</option>
+          <option value="43">Starz</option>
+          <option value="300">Pluto TV</option>
+          <option value="2303|582|531">Paramount+</option>
+          <option value="188|192">YouTube Premium</option>
+          <option value="546">WOW Presents Plus</option>
+          <option value="538|2077">Plex</option>
+          <option value="11">MUBI</option>
+        </select>
+      </div>
+
+      <button class="reset-btn" onclick="resetFilters()">
+        <i class="fas fa-redo-alt" style="font-size:11px; margin-right:5px;"></i> Reset
+      </button>
+
+      <button class="surprise-btn" onclick="surpriseMe()">
+        <i class="fas fa-dice" style="font-size:12px; margin-right:5px;"></i> Surprise Me
+      </button>
+    </div>
+  </div>
+
+  <!-- ── RESULTS ── -->
+  <div class="max-w-[1440px] mx-auto px-5 md:px-14 pb-16">
+    <div class="result-info" id="resultInfo"></div>
+
+    <div id="resultsSkeleton" class="results-grid">
+      <div class="skeleton skeleton-poster"></div>
+      <div class="skeleton skeleton-poster"></div>
+      <div class="skeleton skeleton-poster"></div>
+      <div class="skeleton skeleton-poster"></div>
+      <div class="skeleton skeleton-poster"></div>
+      <div class="skeleton skeleton-poster"></div>
+      <div class="skeleton skeleton-poster"></div>
+      <div class="skeleton skeleton-poster"></div>
+      <div class="skeleton skeleton-poster"></div>
+      <div class="skeleton skeleton-poster"></div>
+      <div class="skeleton skeleton-poster"></div>
+      <div class="skeleton skeleton-poster"></div>
+    </div>
+
+    <div id="resultsGrid" class="results-grid hidden"></div>
+
+    <div id="emptyState" class="empty-state hidden">
+      <i class="fas fa-search-minus"></i>
+      <p>No results found</p>
+    </div>
+
+    <button class="load-more-btn" id="loadMoreBtn" onclick="loadMore()">Load More</button>
+  </div>
+
+</main>
+
+<!-- ── MOBILE BOTTOM NAV ── -->
+<nav id="mobileNav" role="navigation">
+  <a href="index.html" class="mob-nav-btn"><i class="fas fa-home"></i><span>Home</span><div class="mob-nav-dot"></div></a>
+  <a href="explore.html" class="mob-nav-btn active"><i class="fas fa-compass"></i><span>Explore</span><div class="mob-nav-dot"></div></a>
+  <a href="index.html" class="mob-nav-btn"><i class="fas fa-film"></i><span>Movies</span><div class="mob-nav-dot"></div></a>
+  <a href="index.html" class="mob-nav-btn"><i class="fas fa-tv"></i><span>TV</span><div class="mob-nav-dot"></div></a>
+  <a href="index.html" class="mob-nav-btn"><i class="fas fa-fire"></i><span>Trending</span><div class="mob-nav-dot"></div></a>
+</nav>
+
+<script>
+  const API = '607bf14c16a8ab16f9ed61e6ba5920a7';
+  const T = 'https://api.themoviedb.org/3';
+  const W500 = 'https://image.tmdb.org/t/p/w500';
+
+  // ── State ──
+  let currentPage = 1;
+  let totalPages = 1;
+  let totalResults = 0;
+  let searchDebounce = null;
+  let bookmarks = JSON.parse(localStorage.getItem('sw_mylist') || '[]');
+  let currentList = null;
+
+  // ── Init ──
+  async function init() {
+    populateYears();
+    await loadGenres();
+    applyURLParams();
+    fetchResults();
+    showMobileNav();
+
+    // Wire up Category selection change
+    document.getElementById('filterCategory').addEventListener('change', (e) => {
+      const val = e.target.value;
+      currentList = val === 'all' ? null : val;
+      
+      if (currentList) {
+        // Sync default types/platforms for the collections
+        if (currentList === 'trending') {
+          document.getElementById('filterType').value = 'all';
+          document.getElementById('filterSort').value = 'popularity.desc';
+        } else if (currentList === 'now_playing') {
+          document.getElementById('filterType').value = 'movie';
+          document.getElementById('filterSort').value = 'primary_release_date.desc';
+        } else if (currentList === 'popular_movies') {
+          document.getElementById('filterType').value = 'movie';
+          document.getElementById('filterSort').value = 'popularity.desc';
+        } else if (currentList === 'popular_tv') {
+          document.getElementById('filterType').value = 'tv';
+          document.getElementById('filterSort').value = 'popularity.desc';
+        } else if (currentList === 'top_rated') {
+          document.getElementById('filterType').value = 'movie';
+          document.getElementById('filterSort').value = 'vote_average.desc';
+        } else if (currentList === 'upcoming') {
+          document.getElementById('filterType').value = 'movie';
+          document.getElementById('filterSort').value = 'primary_release_date.desc';
+        } else if (currentList === 'netflix') {
+          document.getElementById('filterType').value = 'tv';
+          document.getElementById('filterPlatform').value = '8';
+        } else if (currentList === 'disney') {
+          document.getElementById('filterType').value = 'tv';
+          document.getElementById('filterPlatform').value = '337';
+        } else if (currentList === 'awards') {
+          document.getElementById('filterType').value = 'movie';
+          document.getElementById('filterSort').value = 'popularity.desc';
+        } else if (currentList === 'continue') {
+          document.getElementById('filterType').value = 'all';
+          document.getElementById('filterPlatform').value = 'all';
+        } else if (currentList === 'mylist') {
+          document.getElementById('filterType').value = 'all';
+          document.getElementById('filterPlatform').value = 'all';
+        }
+      }
+      currentPage = 1;
+      fetchResults();
+    });
+
+    // Wire up all other filter changes (they will reset Category)
+    ['filterType','filterGenre','filterSort','filterYear','filterCountry','filterRating','filterPlatform'].forEach(id => {
+      document.getElementById(id).addEventListener('change', () => {
+        currentList = null; // Clear list mode on manual filter change
+        document.getElementById('filterCategory').value = 'all';
+        currentPage = 1;
+        fetchResults();
+      });
+    });
+
+    document.getElementById('mainSearchInput').addEventListener('input', e => {
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => {
+        currentList = null; // Clear list mode on manual search input
+        document.getElementById('filterCategory').value = 'all';
+        currentPage = 1;
+        fetchResults();
+      }, 400);
+    });
+  }
+
+  function populateYears() {
+    const sel = document.getElementById('filterYear');
+    const now = new Date().getFullYear();
+    for (let y = now; y >= 1970; y--) {
+      const o = document.createElement('option');
+      o.value = y; o.textContent = y;
+      sel.appendChild(o);
+    }
+  }
+
+  async function loadGenres() {
+    try {
+      const [mRes, tRes] = await Promise.all([
+        fetch(`${T}/genre/movie/list?api_key=${API}`),
+        fetch(`${T}/genre/tv/list?api_key=${API}`)
+      ]);
+      const mData = await mRes.json();
+      const tData = await tRes.json();
+      const merged = {};
+      [...(mData.genres || []), ...(tData.genres || [])].forEach(g => merged[g.id] = g.name);
+
+      const sel = document.getElementById('filterGenre');
+      Object.entries(merged).sort((a,b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
+        const o = document.createElement('option');
+        o.value = id; o.textContent = name;
+        sel.appendChild(o);
+      });
+    } catch(e) {}
+  }
+
+  function applyURLParams() {
+    const p = new URLSearchParams(window.location.search);
+    currentList = p.get('list');
+
+    if (currentList) {
+      document.getElementById('filterCategory').value = currentList;
+      // Set dropdowns to match the list's implied filters
+      if (currentList === 'trending') {
+        document.getElementById('filterType').value = 'all';
+        document.getElementById('filterSort').value = 'popularity.desc';
+      } else if (currentList === 'now_playing') {
+        document.getElementById('filterType').value = 'movie';
+        document.getElementById('filterSort').value = 'primary_release_date.desc';
+      } else if (currentList === 'popular_movies') {
+        document.getElementById('filterType').value = 'movie';
+        document.getElementById('filterSort').value = 'popularity.desc';
+      } else if (currentList === 'popular_tv') {
+        document.getElementById('filterType').value = 'tv';
+        document.getElementById('filterSort').value = 'popularity.desc';
+      } else if (currentList === 'top_rated') {
+        document.getElementById('filterType').value = 'movie';
+        document.getElementById('filterSort').value = 'vote_average.desc';
+      } else if (currentList === 'upcoming') {
+        document.getElementById('filterType').value = 'movie';
+        document.getElementById('filterSort').value = 'primary_release_date.desc';
+      } else if (currentList === 'netflix') {
+        document.getElementById('filterType').value = 'tv';
+        document.getElementById('filterPlatform').value = '8';
+      } else if (currentList === 'disney') {
+        document.getElementById('filterType').value = 'tv';
+        document.getElementById('filterPlatform').value = '337';
+      } else if (currentList === 'awards') {
+        document.getElementById('filterType').value = 'movie';
+        document.getElementById('filterSort').value = 'popularity.desc';
+      } else if (currentList === 'continue') {
+        document.getElementById('filterType').value = 'all';
+        document.getElementById('filterPlatform').value = 'all';
+      } else if (currentList === 'mylist') {
+        document.getElementById('filterType').value = 'all';
+        document.getElementById('filterPlatform').value = 'all';
+      }
+    } else {
+      document.getElementById('filterCategory').value = 'all';
+      if (p.get('q')) document.getElementById('mainSearchInput').value = p.get('q');
+      if (p.get('type')) document.getElementById('filterType').value = p.get('type');
+      if (p.get('genre')) document.getElementById('filterGenre').value = p.get('genre');
+      if (p.get('sort')) document.getElementById('filterSort').value = p.get('sort');
+      if (p.get('year')) document.getElementById('filterYear').value = p.get('year');
+      if (p.get('country')) document.getElementById('filterCountry').value = p.get('country');
+      if (p.get('rating')) document.getElementById('filterRating').value = p.get('rating');
+      if (p.get('platform')) document.getElementById('filterPlatform').value = p.get('platform');
+    }
+  }
+
+  function updateURLParams() {
+    const query = document.getElementById('mainSearchInput').value.trim();
+    const type = document.getElementById('filterType').value;
+    const genre = document.getElementById('filterGenre').value;
+    const sort = document.getElementById('filterSort').value;
+    const year = document.getElementById('filterYear').value;
+    const country = document.getElementById('filterCountry').value;
+    const rating = document.getElementById('filterRating').value;
+    const platform = document.getElementById('filterPlatform').value;
+
+    const params = new URLSearchParams();
+    if (currentList) {
+      params.set('list', currentList);
+    } else {
+      if (query) params.set('q', query);
+      if (type !== 'all') params.set('type', type);
+      if (genre !== 'all') params.set('genre', genre);
+      if (sort !== 'popularity.desc') params.set('sort', sort);
+      if (year !== 'all') params.set('year', year);
+      if (country !== 'all') params.set('country', country);
+      if (rating !== 'all') params.set('rating', rating);
+      if (platform !== 'all') params.set('platform', platform);
+    }
+
+    const newurl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+    window.history.replaceState({ path: newurl }, '', newurl);
+  }
+
+  // ── Fetch ──
+  async function fetchResults() {
+    updateFilterHighlighting();
+    const query = document.getElementById('mainSearchInput').value.trim();
+    const type = document.getElementById('filterType').value;
+    const genre = document.getElementById('filterGenre').value;
+    const sort = document.getElementById('filterSort').value;
+    const year = document.getElementById('filterYear').value;
+    const country = document.getElementById('filterCountry').value;
+    const rating = document.getElementById('filterRating').value;
+    const platform = document.getElementById('filterPlatform').value;
+
+    if (currentPage === 1) {
+      showSkeleton(true);
+    }
+
+    try {
+      let allResults = [];
+      let maxPages = 1;
+      let maxTotal = 0;
+
+      if (currentList) {
+        let url = '';
+        let listType = 'movie'; // Default
+        if (currentList === 'trending') {
+          url = `${T}/trending/all/day?api_key=${API}&page=${currentPage}`;
+          listType = null;
+        } else if (currentList === 'now_playing') {
+          url = `${T}/movie/now_playing?api_key=${API}&page=${currentPage}`;
+          listType = 'movie';
+        } else if (currentList === 'popular_movies') {
+          url = `${T}/movie/popular?api_key=${API}&page=${currentPage}`;
+          listType = 'movie';
+        } else if (currentList === 'popular_tv') {
+          url = `${T}/tv/popular?api_key=${API}&page=${currentPage}`;
+          listType = 'tv';
+        } else if (currentList === 'top_rated') {
+          url = `${T}/movie/top_rated?api_key=${API}&page=${currentPage}`;
+          listType = 'movie';
+        } else if (currentList === 'upcoming') {
+          url = `${T}/movie/upcoming?api_key=${API}&page=${currentPage}`;
+          listType = 'movie';
+        } else if (currentList === 'netflix') {
+          url = `${T}/discover/tv?api_key=${API}&with_networks=213&page=${currentPage}`;
+          listType = 'tv';
+        } else if (currentList === 'disney') {
+          url = `${T}/discover/tv?api_key=${API}&with_networks=2739&page=${currentPage}`;
+          listType = 'tv';
+        } else if (currentList === 'awards') {
+          url = `${T}/discover/movie?api_key=${API}&with_keywords=2964&page=${currentPage}`;
+          listType = 'movie';
+        } else if (currentList === 'continue') {
+          const history = JSON.parse(localStorage.getItem('sw_history') || '[]');
+          const fetched = await Promise.all(
+            history.map(({ id, type, progress }) =>
+              fetch(`${T}/${type}/${id}?api_key=${API}`)
+                .then(r => r.json())
+                .then(d => ({ ...d, _type: type, _progress: progress }))
+                .catch(() => null)
+            )
+          );
+          allResults = fetched.filter(Boolean);
+          maxPages = 1;
+          maxTotal = allResults.length;
+        } else if (currentList === 'mylist') {
+          const list = JSON.parse(localStorage.getItem('sw_mylist') || '[]');
+          allResults = list.map(item => ({ ...item, _type: item.type || 'movie' }));
+          maxPages = 1;
+          maxTotal = allResults.length;
+        }
+
+        if (url) {
+          const r = await fetch(url);
+          const d = await r.json();
+          allResults = (d.results || []).map(item => ({...item, _type: listType || item.media_type || 'movie'}));
+          maxPages = d.total_pages || 1;
+          maxTotal = d.total_results || 0;
+        }
+      } else if (query) {
+        // Search mode
+        const types = type === 'all' ? ['movie', 'tv'] : [type];
+        for (const t of types) {
+          const r = await fetch(`${T}/search/${t}?api_key=${API}&query=${encodeURIComponent(query)}&page=${currentPage}`);
+          const d = await r.json();
+          allResults.push(...(d.results || []).map(item => ({...item, _type: t})));
+          maxPages = Math.max(maxPages, d.total_pages || 1);
+          maxTotal += (d.total_results || 0);
+        }
+      } else {
+        // Discover mode
+        const types = type === 'all' ? ['movie', 'tv'] : [type];
+        for (const t of types) {
+          let url = `${T}/discover/${t}?api_key=${API}&page=${currentPage}`;
+          // Sort
+          if (t === 'tv') {
+            const sortMap = {
+              'popularity.desc': 'popularity.desc',
+              'vote_average.desc': 'vote_average.desc',
+              'primary_release_date.desc': 'first_air_date.desc',
+              'primary_release_date.asc': 'first_air_date.asc',
+              'revenue.desc': 'popularity.desc'
+            };
+            url += `&sort_by=${sortMap[sort] || sort}`;
+          } else {
+            url += `&sort_by=${sort}`;
+          }
+          if (genre !== 'all') url += `&with_genres=${genre}`;
+          if (year !== 'all') {
+            if (t === 'movie') url += `&primary_release_year=${year}`;
+            else url += `&first_air_date_year=${year}`;
+          }
+          if (country !== 'all') url += `&with_origin_country=${country}`;
+          if (rating !== 'all') url += `&vote_average.gte=${rating}&vote_count.gte=100`;
+          if (platform !== 'all') url += `&with_watch_providers=${platform}&watch_region=US`;
+
+          const r = await fetch(url);
+          const d = await r.json();
+          allResults.push(...(d.results || []).map(item => ({...item, _type: t})));
+          maxPages = Math.max(maxPages, d.total_pages || 1);
+          maxTotal += (d.total_results || 0);
+        }
+      }
+
+      totalPages = maxPages;
+      totalResults = maxTotal;
+      if (!currentList && !query && type === 'all') {
+        allResults.sort((a,b) => (b.popularity || 0) - (a.popularity || 0));
+      }
+      renderResults(allResults, currentPage === 1);
+      updateURLParams();
+    } catch(e) {
+      showEmpty();
+    }
+  }
+
+  // ── Render ──
+  function renderResults(items, replace) {
+    showSkeleton(false);
+    const grid = document.getElementById('resultsGrid');
+    const info = document.getElementById('resultInfo');
+
+    const filtered = items.filter(i => i.poster_path);
+    if (filtered.length === 0 && replace) { showEmpty(); return; }
+
+    if (replace) grid.innerHTML = '';
+    document.getElementById('emptyState').classList.add('hidden');
+    grid.classList.remove('hidden');
+
+    info.innerHTML = `Showing <strong>${grid.children.length + filtered.length}</strong> results`;
+
+    filtered.forEach(item => {
+      const card = createCard(item);
+      if (card) grid.appendChild(card);
+    });
+
+    document.getElementById('loadMoreBtn').style.display =
+      (currentPage < totalPages && currentPage < 20) ? 'block' : 'none';
+  }
+
+  function createCard(item) {
+    const type = item._type || 'movie';
+    const title = item.title || item.name || '';
+    const year = ((item.release_date || item.first_air_date || '')).split('-')[0];
+    const rating = item.vote_average ? item.vote_average.toFixed(1) : '';
+    if (!item.poster_path) return null;
+
+    const isSaved = bookmarks.some(b => b.id == item.id && (b.type || 'movie') == type);
+    const link = document.createElement('a');
+    link.href = `watch.html?id=${item.id}&type=${type}`;
+    link.className = 'poster-card';
+    link.innerHTML = `
+      <img src="${W500}${item.poster_path}" alt="${title}" loading="lazy">
+      <button class="bookmark-btn ${isSaved ? 'saved' : ''}" title="Bookmark">
+        <i class="${isSaved ? 'fas' : 'far'} fa-bookmark"></i>
+      </button>
+      ${rating ? `
+        <div class="rating-badge">
+          <i class="fas fa-star star"></i> ${rating}
+          <span style="width: 1px; height: 10px; background: rgba(255,255,255,0.2); margin: 0 2px;"></span>
+          <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f345.svg" style="width: 11px; height: 11px;" alt="RT">
+          <span>${Math.round((item.vote_average || 0) * 10)}%</span>
+        </div>
+      ` : ''}
+      <div class="card-overlay"></div>
+      <div class="card-bottom">
+        <div class="card-title">${title}</div>
+        ${year ? `<div class="card-year">${year}</div>` : ''}
+      </div>
+      ${item._progress ? `
+        <div class="absolute bottom-0 left-0 right-0 h-[4px] bg-white/20 overflow-hidden z-10">
+          <div class="h-full bg-rose-600" style="width:${item._progress}%"></div>
+        </div>
+      ` : ''}
+    `;
+
+    const btn = link.querySelector('.bookmark-btn');
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleBookmark(btn, type, item.id, title, item.poster_path, item.vote_average);
+    });
+
+    return link;
+  }
+
+  function toggleBookmark(btn, type, id, title, poster_path, vote_average) {
+    const idx = bookmarks.findIndex(b => b.id == id && (b.type || 'movie') == type);
+    if (idx > -1) {
+      bookmarks.splice(idx, 1);
+      btn.classList.remove('saved');
+      btn.querySelector('i').className = 'far fa-bookmark';
+    } else {
+      bookmarks.push({
+        id: id,
+        type: type,
+        title: title,
+        poster_path: poster_path,
+        vote_average: vote_average
+      });
+      btn.classList.add('saved');
+      btn.querySelector('i').className = 'fas fa-bookmark';
+    }
+    localStorage.setItem('sw_mylist', JSON.stringify(bookmarks));
+  }
+
+  async function loadMore() {
+    const btn = document.getElementById('loadMoreBtn');
+    btn.textContent = 'Loading...';
+    btn.disabled = true;
+    currentPage++;
+    await fetchResults();
+    btn.textContent = 'Load More';
+    btn.disabled = false;
+  }
+
+  function resetFilters() {
+    currentList = null;
+    document.getElementById('filterCategory').value = 'all';
+    document.getElementById('mainSearchInput').value = '';
+    document.getElementById('filterType').value = 'all';
+    document.getElementById('filterGenre').value = 'all';
+    document.getElementById('filterSort').value = 'popularity.desc';
+    document.getElementById('filterYear').value = 'all';
+    document.getElementById('filterCountry').value = 'all';
+    document.getElementById('filterRating').value = 'all';
+    document.getElementById('filterPlatform').value = 'all';
+    window.history.replaceState({}, document.title, window.location.pathname);
+    currentPage = 1;
+    fetchResults();
+  }
+
+  function updateFilterHighlighting() {
+    const filters = [
+      { id: 'filterCategory', defaultVal: 'all' },
+      { id: 'filterType', defaultVal: 'all' },
+      { id: 'filterGenre', defaultVal: 'all' },
+      { id: 'filterSort', defaultVal: 'popularity.desc' },
+      { id: 'filterYear', defaultVal: 'all' },
+      { id: 'filterCountry', defaultVal: 'all' },
+      { id: 'filterRating', defaultVal: 'all' },
+      { id: 'filterPlatform', defaultVal: 'all' }
+    ];
+
+    filters.forEach(({ id, defaultVal }) => {
+      const el = document.getElementById(id);
+      const wrapper = el.parentElement;
+      if (el.value !== defaultVal) {
+        wrapper.classList.add('active-filter');
+      } else {
+        wrapper.classList.remove('active-filter');
+      }
+    });
+  }
+
+  async function surpriseMe() {
+    showSkeleton(true);
+    try {
+      const randomPage = Math.floor(Math.random() * 20) + 1;
+      const types = ['movie', 'tv'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      const r = await fetch(`${T}/discover/${type}?api_key=${API}&sort_by=popularity.desc&page=${randomPage}&vote_count.gte=50`);
+      const d = await r.json();
+      const results = (d.results || []).filter(i => i.poster_path);
+      if (results.length === 0) { showEmpty(); return; }
+      const pick = results[Math.floor(Math.random() * results.length)];
+      window.location.href = `watch.html?id=${pick.id}&type=${type}`;
+    } catch(e) {
+      showEmpty();
+    }
+  }
+
+  // ── UI Helpers ──
+  function showSkeleton(show) {
+    document.getElementById('resultsSkeleton').classList.toggle('hidden', !show);
+    if (show) {
+      document.getElementById('resultsGrid').classList.add('hidden');
+      document.getElementById('emptyState').classList.add('hidden');
+      document.getElementById('loadMoreBtn').style.display = 'none';
+    }
+  }
+
+  function showEmpty() {
+    showSkeleton(false);
+    document.getElementById('resultsGrid').classList.add('hidden');
+    document.getElementById('emptyState').classList.remove('hidden');
+    document.getElementById('loadMoreBtn').style.display = 'none';
+    document.getElementById('resultInfo').innerHTML = '';
+  }
+
+  function showMobileNav() {
+    setTimeout(() => document.getElementById('mobileNav').classList.add('visible'), 500);
+  }
+
+  init();
+</script>
+</body>
+</html>

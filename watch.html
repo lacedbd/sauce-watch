@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Watching - sauce.watch</title>
+    <link rel="icon" href="logo.jpg" type="image/jpeg">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -11,6 +12,17 @@
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* ──────── Apple Motion System (shared with index.html) ──────── */
+        :root {
+          --ea:    cubic-bezier(0.42, 0.00, 0.58, 1.00);
+          --ea-de: cubic-bezier(0.00, 0.00, 0.20, 1.00);
+          --ea-sp: cubic-bezier(0.28, 0.11, 0.32, 1.00);
+          --t1: 180ms;
+          --t2: 320ms;
+          --t3: 500ms;
+          --t4: 680ms;
+        }
+
         .hero-gradient {
             background: linear-gradient(to top, rgba(9, 9, 11, 1) 0%, rgba(9, 9, 11, 0) 100%);
         }
@@ -25,7 +37,7 @@
             height: 100%;
             object-fit: cover;
             opacity: 1;
-            transition: opacity 1.5s ease;
+            transition: opacity 1.6s var(--ea);
             z-index: 2;
             pointer-events: none;
         }
@@ -36,13 +48,13 @@
             overflow: hidden;
             opacity: 0;
             visibility: hidden;
-            transition: opacity 1.5s ease, visibility 0s linear 1.5s;
+            transition: opacity 1.6s var(--ea), visibility 0s linear 1.6s;
             z-index: 1;
         }
         #trailerPlayerContainer.is-playing {
             opacity: 1;
             visibility: visible;
-            transition: opacity 1.5s ease, visibility 0s linear 0s;
+            transition: opacity 1.6s var(--ea), visibility 0s linear 0s;
         }
         #trailerPlayer {
             position: absolute;
@@ -53,22 +65,25 @@
         }
         /* ── Hero focus/idle mode ── */
         #heroContent {
-            transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+            transition:
+              opacity   var(--t3) var(--ea-de),
+              transform var(--t3) var(--ea-de);
         }
         #heroTitle {
             display: block;
             transform-origin: left bottom;
-            transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+            transition: transform var(--t3) var(--ea-de);
             will-change: transform;
         }
         #heroMeta, #heroOverview {
-            transition: opacity 0.5s cubic-bezier(0.25, 1, 0.5, 1), 
-                        max-height 0.5s cubic-bezier(0.25, 1, 0.5, 1), 
-                        margin 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+            transition:
+              opacity    var(--t2) var(--ea),
+              max-height var(--t3) var(--ea-de),
+              margin     var(--t2) var(--ea);
             overflow: hidden;
         }
         #heroButtons {
-            transition: padding-top 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+            transition: padding-top var(--t3) var(--ea-de);
         }
         /* focused = trailer playing, mouse idle — hide meta + desc, keep title + buttons */
         #heroSection.trailer-focused #heroMeta,
@@ -95,6 +110,60 @@
                 max-width: 480px;
                 max-height: 160px;
             }
+        }
+
+        /* Recommendations grid card hover */
+        .rec-card {
+          will-change: transform;
+          transition:
+            transform    var(--t2) var(--ea-de),
+            box-shadow   var(--t2) var(--ea),
+            border-color var(--t2) var(--ea);
+        }
+        .rec-card:hover {
+          transform: translateY(-3px);
+          box-shadow:
+            0 2px  8px rgba(0,0,0,0.22),
+            0 8px 24px rgba(0,0,0,0.28),
+            0 16px 36px rgba(0,0,0,0.16);
+        }
+        .rec-card:hover img {
+          transform: scale(1.03);
+        }
+        .rec-card img {
+          transition: transform var(--t3) var(--ea-de);
+        }
+        /* Episode & server buttons */
+        .episode-btn, .server-btn {
+          transition:
+            background    var(--t1) var(--ea),
+            border-color  var(--t1) var(--ea),
+            color         var(--t1) var(--ea),
+            transform     var(--t2) var(--ea-de);
+        }
+        /* Actor card hover */
+        .actor-card {
+          transition:
+            transform  var(--t2) var(--ea-de),
+            box-shadow var(--t2) var(--ea);
+        }
+        .actor-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 18px rgba(0,0,0,0.32);
+        }
+        /* Premium custom video player styles */
+        #playerModal {
+            background-color: #000 !important;
+        }
+        #playerPanelContent::-webkit-scrollbar {
+            width: 4px;
+        }
+        #playerPanelContent::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 99px;
+        }
+        #playerPanelContent::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
     </style>
     <!-- AD TAGS PLACEHOLDER (Paste Adsterra tags here to monetize the player page) -->
@@ -130,7 +199,7 @@
         <div class="absolute inset-0 bg-gradient-to-r from-zinc-950/40 via-transparent to-transparent z-10 pointer-events-none"></div>
 
         <!-- Overlaid text & options details -->
-        <div id="heroContent" class="relative z-20 max-w-4xl px-6 md:px-12 pb-4 md:pb-8 space-y-3 md:space-y-4 opacity-0 transition-opacity duration-700">
+        <div id="heroContent" class="relative z-20 max-w-4xl px-6 md:px-12 pb-4 md:pb-8 space-y-3 md:space-y-4 opacity-0" style="transition: opacity var(--t4) var(--ea-de)">
             <div id="heroTitle" class="block">
                 <h1 id="heroTitleText" class="text-2xl md:text-6xl font-black uppercase tracking-tighter text-white drop-shadow-lg leading-none"></h1>
                 <img id="heroTitleLogo" class="hidden max-h-[50px] md:max-h-[160px] w-auto object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" src="" alt="" />
@@ -154,16 +223,33 @@
 
             <!-- Pill options buttons row -->
             <div id="heroButtons" class="flex items-center gap-2 md:gap-3 pt-4 md:pt-6 flex-nowrap overflow-x-auto scrollbar-hide pb-2 w-full">
-                <button id="mainPlayBtn" class="bg-white hover:bg-zinc-200 text-black px-5 md:px-8 py-2 md:py-3 rounded-full font-bold flex flex-shrink-0 items-center gap-2 transition-all transform hover:scale-105 active:scale-95 shadow-xl text-sm md:text-base">
+                <button id="mainPlayBtn"
+                    style="transition: background var(--t1) var(--ea), transform var(--t2) var(--ea-de), box-shadow var(--t2) var(--ea);"
+                    class="bg-white text-black px-5 md:px-8 py-2 md:py-3 rounded-full font-bold flex flex-shrink-0 items-center gap-2 shadow-lg text-sm md:text-base"
+                    onmouseenter="this.style.transform='translateY(-1px)';this.style.background='#f4f4f5';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.32)'"
+                    onmouseleave="this.style.transform='';this.style.background='';this.style.boxShadow=''">
                     <i class="fas fa-play"></i> Play
                 </button>
-                <button class="w-9 h-9 md:w-11 md:h-11 rounded-full border border-white/20 hover:bg-white/10 flex flex-shrink-0 items-center justify-center text-white transition-all text-xs md:text-sm shadow-xl" title="Add to Library">
+                <button
+                    style="transition: background var(--t1) var(--ea), border-color var(--t2) var(--ea), transform var(--t2) var(--ea-de);"
+                    class="w-9 h-9 md:w-11 md:h-11 rounded-full border border-white/20 flex flex-shrink-0 items-center justify-center text-white text-xs md:text-sm shadow-lg"
+                    title="Add to Library"
+                    onmouseenter="this.style.transform='translateY(-1px)';this.style.background='rgba(255,255,255,0.10)'"
+                    onmouseleave="this.style.transform='';this.style.background=''">
                     <i class="fas fa-plus"></i>
                 </button>
-                <button id="jumpToEpisodesBtn" class="hidden bg-white/10 hover:bg-white/20 border border-white/10 text-white px-4 md:px-6 py-2 md:py-3 rounded-full font-bold flex flex-shrink-0 items-center gap-2 transition-all text-xs md:text-sm shadow-xl whitespace-nowrap">
+                <button id="jumpToEpisodesBtn"
+                    style="transition: background var(--t1) var(--ea), transform var(--t2) var(--ea-de);"
+                    class="hidden bg-white/10 border border-white/10 text-white px-4 md:px-6 py-2 md:py-3 rounded-full font-bold flex flex-shrink-0 items-center gap-2 text-xs md:text-sm shadow-lg whitespace-nowrap"
+                    onmouseenter="this.style.transform='translateY(-1px)';this.style.background='rgba(255,255,255,0.18)'"
+                    onmouseleave="this.style.transform='';this.style.background=''">
                     <i class="fas fa-list-ol"></i> Episodes
                 </button>
-                <button id="jumpToSimilarBtn" class="bg-white/10 hover:bg-white/20 border border-white/10 text-white px-4 md:px-6 py-2 md:py-3 rounded-full font-bold flex flex-shrink-0 items-center gap-2 transition-all text-xs md:text-sm shadow-xl whitespace-nowrap">
+                <button id="jumpToSimilarBtn"
+                    style="transition: background var(--t1) var(--ea), transform var(--t2) var(--ea-de);"
+                    class="bg-white/10 border border-white/10 text-white px-4 md:px-6 py-2 md:py-3 rounded-full font-bold flex flex-shrink-0 items-center gap-2 text-xs md:text-sm shadow-lg whitespace-nowrap"
+                    onmouseenter="this.style.transform='translateY(-1px)';this.style.background='rgba(255,255,255,0.18)'"
+                    onmouseleave="this.style.transform='';this.style.background=''">
                     <i class="fas fa-thumbs-up"></i> Similars
                 </button>
             </div>
@@ -174,17 +260,38 @@
     <main class="relative z-10 px-6 md:px-12 py-8 space-y-12 max-w-[1440px] mx-auto w-full">
         
         <!-- TV Episodes Selector Container (Shown only for TV Shows) -->
-        <div id="tvSelectorContainer" class="hidden bg-white/5 border border-white/10 rounded-2xl p-6 space-y-6">
-            <div class="flex items-center justify-between border-b border-white/5 pb-4 flex-wrap gap-3">
-                <h3 class="text-xl font-bold text-white flex items-center gap-2">
-                    <i class="fas fa-list-ol text-blue-500"></i> Episodes
-                </h3>
-                <select id="seasonSelect" class="bg-zinc-900 border border-zinc-800 text-sm text-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-zinc-700 transition">
-                    <!-- Populated dynamically -->
-                </select>
+        <div id="tvSelectorContainer" class="hidden space-y-6">
+            <div class="flex items-center gap-2 border-l-2 border-red-600 pl-3">
+                <h2 class="text-2xl font-bold text-white">Episodes</h2>
             </div>
-            <!-- Episode Button Grid -->
-            <div id="episodeGrid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 max-h-[250px] overflow-y-auto scrollbar-hide pr-1">
+            
+            <div class="flex flex-wrap items-center gap-3 pb-6 border-b border-white/5">
+                <!-- Season Select Dropdown -->
+                <div class="relative">
+                    <select id="seasonSelect" class="appearance-none bg-zinc-900 border border-zinc-800 text-sm text-white font-bold rounded-xl px-4 py-2.5 pr-10 focus:outline-none focus:border-zinc-700 transition cursor-pointer">
+                        <!-- Populated dynamically -->
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-zinc-400">
+                        <i class="fas fa-chevron-down text-xs"></i>
+                    </div>
+                </div>
+
+                <!-- Search Input -->
+                <div class="relative flex-1 min-w-[200px] max-w-sm">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                        <i class="fas fa-search text-xs"></i>
+                    </div>
+                    <input type="text" id="episodeSearchInput" placeholder="Search episode..." class="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-700 transition" />
+                </div>
+
+                <!-- Sort Button -->
+                <button id="episodeSortBtn" class="flex items-center justify-center w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition" title="Sort Order">
+                    <i id="episodeSortIcon" class="fas fa-sort-numeric-down text-sm"></i>
+                </button>
+            </div>
+            
+            <!-- Episodes List -->
+            <div id="episodeGrid" class="flex flex-col divide-y divide-zinc-900 max-h-[650px] overflow-y-auto pr-1">
                 <!-- Populated dynamically -->
             </div>
         </div>
@@ -196,6 +303,24 @@
             </div>
             <div id="castCarousel" class="flex gap-4 overflow-x-auto scrollbar-hide pb-4">
                 <!-- Injected dynamically -->
+            </div>
+        </section>
+
+        <!-- Awards Section -->
+        <section id="awardsSection" class="space-y-6 hidden pt-4">
+            <div class="flex items-center gap-2 border-l-2 border-amber-500 pl-3">
+                <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-trophy text-amber-500 text-xl"></i> Awards & Recognition
+                </h2>
+            </div>
+            <div id="awardsSectionContent" class="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-6 text-amber-100/90 text-sm md:text-base leading-relaxed max-w-4xl shadow-xl flex items-center gap-4">
+                <div class="flex items-center justify-center w-12 h-12 rounded-full bg-amber-500/15 text-amber-400 flex-shrink-0">
+                    <i class="fas fa-award text-2xl animate-bounce" style="animation-duration: 3s;"></i>
+                </div>
+                <div>
+                    <span class="font-bold text-amber-300 block mb-0.5 uppercase tracking-wider text-xs">Award Winning Film</span>
+                    <span id="movieAwardsText" class="text-zinc-200"></span>
+                </div>
             </div>
         </section>
 
@@ -216,37 +341,64 @@
     </main>
 
     <!-- Streaming Modal Player Overlay (Cinema Mode) -->
-    <div id="playerModal" class="hidden fixed inset-0 z-[200] bg-zinc-950/95 backdrop-blur-md flex flex-col justify-center items-center p-4">
-        <!-- Close button -->
-        <button id="closePlayerBtn" class="absolute top-6 right-6 text-white hover:text-red-500 transition-colors text-2xl">
-            <i class="fas fa-times"></i>
-        </button>
+    <div id="playerModal" class="hidden fixed inset-0 z-[200] bg-black flex justify-center items-center select-none overflow-hidden">
+        <!-- The Video Player IFrame -->
+        <div class="absolute inset-0 w-full h-full z-0 bg-black">
+            <iframe id="videoPlayer" 
+                    src="" 
+                    class="w-full h-full border-0" 
+                    allowfullscreen 
+                    scrolling="no" 
+                    frameborder="0" 
+                    allow="autoplay; encrypted-media; picture-in-picture">
+            </iframe>
+        </div>
 
-        <div class="w-full max-w-5xl space-y-6">
-            <!-- Video Frame Container -->
-            <div class="relative w-full aspect-video rounded-2xl overflow-hidden bg-black border border-white/10 shadow-2xl">
-                <iframe id="videoPlayer" 
-                        src="" 
-                        class="absolute inset-0 w-full h-full" 
-                        allowfullscreen 
-                        scrolling="no" 
-                        frameborder="0" 
-                        sandbox="allow-scripts allow-same-origin allow-forms"
-                        allow="autoplay; encrypted-media; picture-in-picture">
-                </iframe>
+
+
+
+
+        <!-- UI Overlay Layer -->
+        <div id="playerControlsOverlay" class="absolute inset-0 z-10 flex flex-col justify-between p-6 opacity-100 transition-all duration-300 pointer-events-none">
+            
+            <!-- Top Row (Close, Settings, Next Episode Buttons) -->
+            <div class="flex items-center justify-between w-full pointer-events-auto">
+                <!-- Left: Back Button -->
+                <button id="closePlayerBtn" class="w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 flex items-center justify-center text-white text-base transition-all shadow-lg hover:scale-105" title="Go Back">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                
+                <!-- Right: Settings & Next Ep Buttons -->
+                <div class="flex items-center gap-3">
+                    <button id="playerServersBtnTop" class="w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 flex items-center justify-center text-white text-base transition-all shadow-lg hover:scale-105" title="Servers">
+                        <i class="fas fa-server"></i>
+                    </button>
+                    <button id="playerNextEpBtnTop" class="hidden w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 flex items-center justify-center text-white text-base transition-all shadow-lg hover:scale-105" title="Next Episode">
+                        <i class="fas fa-step-forward"></i>
+                    </button>
+                    <button id="playerEpisodesBtnTop" class="hidden w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 flex items-center justify-center text-white text-base transition-all shadow-lg hover:scale-105" title="Episodes">
+                        <i class="fas fa-layer-group"></i>
+                    </button>
+                </div>
             </div>
 
-            <!-- Server Switcher Row -->
-            <div class="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 flex-wrap gap-4">
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-server text-red-500 text-sm"></i>
-                    <span class="text-sm font-bold text-gray-200">Streaming Server:</span>
+
+
+            <!-- Right Sidebar Panel Overlay -->
+            <div id="playerRightPanel" class="hidden absolute top-6 right-6 bottom-6 w-96 bg-zinc-950/95 border border-zinc-900 rounded-2xl shadow-2xl p-5 flex flex-col pointer-events-auto z-20 transition-all duration-300">
+                <!-- Header Title Row -->
+                <div class="flex items-center justify-between border-b border-zinc-900 pb-4 mb-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fas fa-layer-group text-rose-500 text-sm"></i> Episodes
+                    </h3>
+                    <button id="closePanelBtn" class="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-all">
+                        <i class="fas fa-times text-xs"></i>
+                    </button>
                 </div>
-                <div class="flex gap-2 flex-wrap">
-                    <button onclick="switchServer('vidsrc')" class="server-btn px-4 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold transition-all shadow-md">Server 1 (VidSrc)</button>
-                    <button onclick="switchServer('vidlink')" class="server-btn px-4 py-1.5 bg-white/5 text-gray-300 hover:bg-white/10 rounded-lg text-xs font-bold transition-all border border-white/5">Server 2 (VidLink - Clean)</button>
-                    <button onclick="switchServer('embedsu')" class="server-btn px-4 py-1.5 bg-white/5 text-gray-300 hover:bg-white/10 rounded-lg text-xs font-bold transition-all border border-white/5">Server 3 (Embed.su)</button>
-                    <button onclick="switchServer('vidsrcxyz')" class="server-btn px-4 py-1.5 bg-white/5 text-gray-300 hover:bg-white/10 rounded-lg text-xs font-bold transition-all border border-white/5">Server 4 (VidSrc.xyz)</button>
+
+                <!-- Scrollable Tab Content -->
+                <div class="flex-1 overflow-y-auto pr-1" id="playerPanelContent">
+                    <!-- Loaded dynamically -->
                 </div>
             </div>
         </div>
@@ -271,8 +423,7 @@
         let currentType = 'movie';
         let activeSeasonNum = 1;
         let activeEpisodeNum = 1;
-        let currentServer = 'vidsrc';
-        let isMuted = true;
+
 
         // YouTube IFrame Player API Integration
         let trailerPlayer;
@@ -363,39 +514,7 @@
             });
         }
 
-        // Switch stream server inside the modal player
-        function switchServer(serverKey) {
-            const playerIframe = document.getElementById('videoPlayer');
-            let src = '';
-            
-            const epPath = currentType === 'tv' ? `/${activeSeasonNum}/${activeEpisodeNum}` : '';
 
-            if (serverKey === 'vidsrc') {
-                src = currentType === 'tv' 
-                    ? `https://vidsrc.to/embed/tv/${currentMovieId}${epPath}` 
-                    : `https://vidsrc.to/embed/movie/${currentMovieId}`;
-            } else if (serverKey === 'vidlink') {
-                src = `https://vidlink.pro/embed/${currentType}/${currentMovieId}${currentType === 'tv' ? `/season/${activeSeasonNum}/episode/${activeEpisodeNum}` : ''}`;
-            } else if (serverKey === 'embedsu') {
-                src = `https://embed.su/embed/${currentType}/${currentMovieId}${currentType === 'tv' ? `/${activeSeasonNum}/${activeEpisodeNum}` : ''}`;
-            } else if (serverKey === 'vidsrcxyz') {
-                src = `https://vidsrc.xyz/embed/${currentType}/${currentMovieId}${currentType === 'tv' ? `/${activeSeasonNum}/${activeEpisodeNum}` : ''}`;
-            }
-            
-            playerIframe.src = src;
-            currentServer = serverKey;
-
-            // Highlight buttons
-            const buttons = document.querySelectorAll('.server-btn');
-            buttons.forEach(btn => {
-                if (btn.innerText.toLowerCase().includes(serverKey) || 
-                    (serverKey === 'vidsrc' && btn.innerText.includes('VidSrc') && !btn.innerText.includes('.xyz'))) {
-                    btn.className = "server-btn px-4 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold transition-all shadow-md";
-                } else {
-                    btn.className = "server-btn px-4 py-1.5 bg-white/5 text-gray-300 hover:bg-white/10 rounded-lg text-xs font-bold transition-all border border-white/5";
-                }
-            });
-        }
 
         // Fetch trailers/videos from TMDB API
         async function fetchAndSetupTrailerBackground() {
@@ -442,60 +561,498 @@
             }
         });
 
+
+
+        // Setup notification toasts
+        function showToast(message) {
+            let toast = document.getElementById('playerToast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'playerToast';
+                toast.className = 'fixed bottom-28 left-1/2 -translate-x-1/2 bg-black/85 border border-zinc-800/80 text-white text-xs font-semibold px-4 py-2.5 rounded-full z-[300] transition-opacity duration-300 opacity-0 pointer-events-none shadow-2xl backdrop-blur-md';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = message;
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+            clearTimeout(toast.timer);
+            toast.timer = setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 2000);
+        }
+
+
+
+        // Show/hide controls overlay
+        function showPlayerControls() {
+            const overlay = document.getElementById('playerControlsOverlay');
+            if (!overlay) return;
+            overlay.classList.remove('opacity-0');
+            overlay.classList.add('opacity-100');
+            overlay.style.visibility = 'visible';
+        }
+
+
+
+        let isMuted = true;
+        let allEpisodes = [];
+        let episodeSortOrder = 'asc';
+        let showBackdropPath = '';
+        let generalShowRuntime = null;
+
+        const playerServers = [
+            { id: 'videasy', name: 'Videasy', audio: 'High Quality', flag: '✨', key: 'videasy' },
+            { id: 'vidsrc', name: 'Neon', audio: 'Original audio', flag: '🇺🇸', key: 'vidsrc' },
+            { id: 'vidlink', name: 'Yoru', audio: 'Movies only, may have 4K', flag: '🇺🇸', key: 'vidlink' },
+            { id: 'embedsu', name: 'Cypher', audio: 'Original audio', flag: '🇺🇸', key: 'embedsu' },
+            { id: 'vidsrcxyz', name: 'Sage', audio: 'Original audio', flag: '🇺🇸', key: 'vidsrcxyz' },
+            { id: 'breach', name: 'Breach', audio: 'Original audio', flag: '🇺🇸', key: 'vidlink' },
+            { id: 'vyse', name: 'Vyse', audio: 'Original audio', flag: '🇺🇸', key: 'vidsrc' },
+            { id: 'killjoy', name: 'Killjoy', audio: 'German audio', flag: '🇩🇪', key: 'vidlink' },
+            { id: 'fade', name: 'Fade', audio: 'Hindi audio', flag: '🇮🇳', key: 'vidsrc' },
+            { id: 'omen', name: 'Omen', audio: 'Spanish audio', flag: '🇲🇽', key: 'embedsu' }
+        ];
+        
+        let favoriteServers = JSON.parse(localStorage.getItem('sw_fav_servers') || '[]');
+        let currentServerId = 'videasy'; // Default Videasy
+        let activePlayerTab = 'servers';
+
+        function loadVideoSource() {
+            const playerIframe = document.getElementById('videoPlayer');
+            const srv = playerServers.find(s => s.id === currentServerId) || playerServers[0];
+            const serverKey = srv.key;
+            
+            let src = '';
+            if (serverKey === 'videasy') {
+                src = currentType === 'tv'
+                    ? `https://player.videasy.net/tv/${currentMovieId}/${activeSeasonNum}/${activeEpisodeNum}`
+                    : `https://player.videasy.net/movie/${currentMovieId}`;
+            } else if (serverKey === 'vidlink') {
+                src = currentType === 'tv'
+                    ? `https://vidlink.pro/tv/${currentMovieId}/${activeSeasonNum}/${activeEpisodeNum}`
+                    : `https://vidlink.pro/movie/${currentMovieId}`;
+            } else if (serverKey === 'embedsu') {
+                src = `https://embed.su/embed/${currentType}/${currentMovieId}${currentType === 'tv' ? `/${activeSeasonNum}/${activeEpisodeNum}` : ''}`;
+            } else if (serverKey === 'vidsrcxyz') {
+                src = `https://vidsrc.xyz/embed/${currentType}/${currentMovieId}${currentType === 'tv' ? `/${activeSeasonNum}/${activeEpisodeNum}` : ''}`;
+            } else {
+                // vidsrc (Neon)
+                src = currentType === 'tv'
+                    ? `https://vidsrc.to/embed/tv/${currentMovieId}/${activeSeasonNum}/${activeEpisodeNum}`
+                    : `https://vidsrc.to/embed/movie/${currentMovieId}`;
+            }
+            playerIframe.src = src;
+        }
+
+        function renderServersSidebar() {
+            const content = document.getElementById('playerPanelContent');
+            if (!content) return;
+            content.innerHTML = '';
+            
+            document.querySelector('#playerRightPanel h3').innerHTML = '<i class="fas fa-server text-rose-500 text-sm"></i> Servers';
+
+            playerServers.forEach(srv => {
+                const isActive = currentServerId === srv.id;
+                const isFav = favoriteServers.includes(srv.id);
+                
+                const card = document.createElement('div');
+                card.className = `flex items-center justify-between p-3 bg-zinc-900/40 border border-zinc-800/80 rounded-xl cursor-pointer hover:bg-zinc-850/60 hover:border-zinc-700 transition-all mb-2.5 ${isActive ? 'bg-rose-950/20 border-rose-900/30' : ''}`;
+                card.innerHTML = `
+                    <div class="flex items-center gap-3 pointer-events-none">
+                        <div class="text-2xl">${srv.flag}</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-bold ${isActive ? 'text-white' : 'text-gray-300'}">${srv.name}</div>
+                            <div class="text-[10px] text-zinc-500">${srv.audio}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        ${isActive ? '<i class="fas fa-exclamation-circle text-rose-500 text-[10px]"></i>' : ''}
+                        <button class="fav-btn p-1 hover:scale-110 transition-transform">
+                            <i class="${isFav ? 'fas text-rose-500' : 'far text-zinc-500 hover:text-rose-400'} fa-heart text-sm"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Favorite Button Toggle
+                const favBtn = card.querySelector('.fav-btn');
+                favBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (isFav) {
+                        favoriteServers = favoriteServers.filter(id => id !== srv.id);
+                    } else {
+                        favoriteServers.push(srv.id);
+                    }
+                    localStorage.setItem('sw_fav_servers', JSON.stringify(favoriteServers));
+                    renderServersSidebar(); // Re-render to update heart icons
+                };
+
+                // Server Selection
+                card.addEventListener('click', () => {
+                    if (currentServerId !== srv.id) {
+                        currentServerId = srv.id;
+                        loadVideoSource();
+                        renderServersSidebar();
+                        showToast(`Switched to ${srv.name}`);
+                    }
+                });
+                
+                content.appendChild(card);
+            });
+        }
+
+        function renderEpisodesSidebar() {
+            const content = document.getElementById('playerPanelContent');
+            if (!content) return;
+            content.innerHTML = '';
+            
+            document.querySelector('#playerRightPanel h3').innerHTML = '<i class="fas fa-layer-group text-rose-500 text-sm"></i> Episodes';
+
+            if (currentType !== 'tv') {
+                content.innerHTML = '<div class="py-12 text-center text-zinc-500 text-sm">Episodes only available for TV Shows.</div>';
+                return;
+            }
+            if (allEpisodes.length === 0) {
+                content.innerHTML = '<div class="py-12 text-center text-zinc-500 text-sm">Loading episodes...</div>';
+                return;
+            }
+
+            allEpisodes.forEach(ep => {
+                const selectEl = document.getElementById('seasonSelect');
+                const selectedSeason = selectEl ? parseInt(selectEl.value) : activeSeasonNum;
+                const isActive = activeSeasonNum === selectedSeason && activeEpisodeNum === ep.episode_number;
+
+                const card = document.createElement('div');
+                card.className = `flex items-center gap-3 p-3 bg-zinc-900/40 border border-zinc-800/80 rounded-xl cursor-pointer hover:bg-zinc-850/60 hover:border-zinc-700 transition-all mb-2.5 ${isActive ? 'bg-rose-950/20 border-rose-900/30' : ''}`;
+                
+                const imgUrl = ep.still_path 
+                    ? `https://image.tmdb.org/t/p/w185${ep.still_path}` 
+                    : (showBackdropPath ? `https://image.tmdb.org/t/p/w185${showBackdropPath}` : 'https://placehold.co/185x104/09090b/fafafa?text=No+Preview');
+
+                card.innerHTML = `
+                    <div class="relative w-24 aspect-video rounded-lg overflow-hidden bg-zinc-900 flex-shrink-0 shadow-md">
+                        <img src="${imgUrl}" alt="${ep.name}" class="w-full h-full object-cover">
+                        <div class="absolute bottom-1 left-1 bg-black/85 px-1.5 py-0.5 rounded text-[9px] font-bold text-white border border-white/5">
+                            ${ep.episode_number}
+                        </div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs font-bold ${isActive ? 'text-rose-500' : 'text-white'} truncate">${ep.name}</div>
+                        <div class="text-[10px] text-zinc-500">${ep.runtime || generalShowRuntime || ''} min</div>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => {
+                    activeSeasonNum = selectedSeason;
+                    activeEpisodeNum = ep.episode_number;
+                    loadVideoSource();
+                    renderEpisodes();
+                    renderEpisodesSidebar();
+                });
+
+                content.appendChild(card);
+            });
+        }
+
+        function saveToHistory() {
+            try {
+                let history = JSON.parse(localStorage.getItem('sw_history') || '[]');
+                // Remove if already in history
+                history = history.filter(item => !(item.id == currentMovieId && item.type == currentType));
+                // Add to beginning
+                const historyItem = {
+                    id: currentMovieId,
+                    type: currentType,
+                    progress: Math.floor(Math.random() * 60) + 20
+                };
+                if (currentType === 'tv') {
+                    historyItem.season = activeSeasonNum;
+                    historyItem.episode = activeEpisodeNum;
+                }
+                history.unshift(historyItem);
+                // Keep only last 20
+                history = history.slice(0, 20);
+                localStorage.setItem('sw_history', JSON.stringify(history));
+            } catch (err) {
+                console.error("Failed to save to history:", err);
+            }
+        }
+
         // Open Cinema modal player
         function openPlayerModal() {
-            // If background trailer trailer is active and unmuted, mute it first
             if (trailerPlayer && typeof trailerPlayer.mute === 'function' && !isMuted) {
                 isMuted = true;
                 trailerPlayer.mute();
                 document.getElementById('volumeIcon').className = "fas fa-volume-mute";
             }
             
-            switchServer(currentServer);
+            saveToHistory();
+            loadVideoSource();
             document.getElementById('playerModal').classList.remove('hidden');
             document.body.classList.add('overflow-hidden');
+            
+            // Show/hide episodes features based on media type
+            const nextEpBtn = document.getElementById('playerNextEpBtnTop');
+            const epsBtn = document.getElementById('playerEpisodesBtnTop');
+            
+            if (currentType === 'tv') {
+                if (nextEpBtn) nextEpBtn.classList.remove('hidden');
+                if (epsBtn) epsBtn.classList.remove('hidden');
+                
+                if (nextEpBtn) {
+                    nextEpBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        const nextEpNum = activeEpisodeNum + 1;
+                        const nextEpExists = allEpisodes.some(e => e.episode_number === nextEpNum);
+                        if (nextEpExists) {
+                            activeEpisodeNum = nextEpNum;
+                            loadVideoSource();
+                            renderEpisodes();
+                            renderEpisodesSidebar();
+                            showToast(`Playing Episode ${nextEpNum}`);
+                        } else {
+                            showToast("No more episodes in this season.");
+                        }
+                    };
+                }
+            } else {
+                if (nextEpBtn) nextEpBtn.classList.add('hidden');
+                if (epsBtn) epsBtn.classList.add('hidden');
+            }
+
+            showPlayerControls();
         }
 
-        // Close Cinema modal player
-        document.getElementById('closePlayerBtn').addEventListener('click', () => {
-            document.getElementById('videoPlayer').src = '';
-            document.getElementById('playerModal').classList.add('hidden');
-            document.body.classList.remove('overflow-hidden');
-        });
+        // Setup global player controller hooks once DOM is fully loaded/initialized
+        function initPlayerControllers() {
+            const pm = document.getElementById('playerModal');
+            if (pm) {
+                pm.removeEventListener('mousemove', showPlayerControls);
+                pm.addEventListener('mousemove', showPlayerControls);
+                pm.removeEventListener('touchstart', showPlayerControls);
+                pm.addEventListener('touchstart', showPlayerControls, {passive: true});
+            }
+
+            const closeBtn = document.getElementById('closePlayerBtn');
+            if (closeBtn) {
+                closeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    document.getElementById('videoPlayer').src = '';
+                    document.getElementById('playerModal').classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
+                    if (document.fullscreenElement) {
+                        document.exitFullscreen().catch(() => {});
+                    }
+                };
+            }
+
+            const closePanel = document.getElementById('closePanelBtn');
+            if (closePanel) {
+                closePanel.onclick = (e) => {
+                    e.stopPropagation();
+                    document.getElementById('playerRightPanel').classList.add('hidden');
+                };
+            }
+
+            const epBtnTop = document.getElementById('playerEpisodesBtnTop');
+            if (epBtnTop) {
+                epBtnTop.onclick = (e) => {
+                    e.stopPropagation();
+                    const panel = document.getElementById('playerRightPanel');
+                    const isHidden = panel.classList.contains('hidden');
+                    if (isHidden || activePlayerTab !== 'episodes') {
+                        activePlayerTab = 'episodes';
+                        panel.classList.remove('hidden');
+                        renderEpisodesSidebar();
+                    } else {
+                        panel.classList.add('hidden');
+                    }
+                };
+            }
+            
+            const serversBtnTop = document.getElementById('playerServersBtnTop');
+            if (serversBtnTop) {
+                serversBtnTop.onclick = (e) => {
+                    e.stopPropagation();
+                    const panel = document.getElementById('playerRightPanel');
+                    const isHidden = panel.classList.contains('hidden');
+                    if (isHidden || activePlayerTab !== 'servers') {
+                        activePlayerTab = 'servers';
+                        panel.classList.remove('hidden');
+                        renderServersSidebar();
+                    } else {
+                        panel.classList.add('hidden');
+                    }
+                };
+            }
+        }
 
         // Populate TV Seasons and Episodes Lists
         async function fetchEpisodes(seasonNum) {
             const grid = document.getElementById('episodeGrid');
-            grid.innerHTML = '<p class="text-zinc-500 text-xs">Loading episodes...</p>';
+            grid.innerHTML = '<div class="py-12 text-center text-zinc-500 text-sm">Loading episodes...</div>';
             try {
                 const res = await fetch(`${TMDB_BASE}/tv/${currentMovieId}/season/${seasonNum}?api_key=${TMDB_API_KEY}`);
                 const data = await res.json();
-                grid.innerHTML = '';
-                
-                (data.episodes || []).forEach(ep => {
-                    const btn = document.createElement('button');
-                    btn.className = `episode-btn p-3 rounded-xl border text-sm font-bold text-left transition-all bg-white/5 border-white/5 text-gray-300 hover:border-white/10 hover:bg-white/10`;
-                    btn.innerHTML = `
-                        <div class="text-[9px] opacity-60">EPISODE ${ep.episode_number}</div>
-                        <div class="truncate text-xs mt-0.5">${ep.name}</div>
-                    `;
-                    btn.addEventListener('click', () => {
-                        activeSeasonNum = parseInt(seasonNum);
-                        activeEpisodeNum = ep.episode_number;
-
-                        // Highlight selected episode button
-                        document.querySelectorAll('.episode-btn').forEach(b => {
-                            b.className = "episode-btn p-3 rounded-xl border border-white/5 text-sm font-bold text-left transition-all bg-white/5 text-gray-300 hover:border-white/10 hover:bg-white/10";
-                        });
-                        btn.className = "episode-btn p-3 rounded-xl border border-red-500 text-sm font-bold text-left transition-all bg-red-600 text-white shadow-md";
-
-                        openPlayerModal();
-                    });
-                    grid.appendChild(btn);
-                });
+                allEpisodes = data.episodes || [];
+                renderEpisodes();
             } catch (err) {
                 console.error("Episodes load broken:", err);
-                grid.innerHTML = '<p class="text-red-500 text-xs">Failed to load episodes.</p>';
+                grid.innerHTML = '<div class="py-12 text-center text-red-500 text-sm">Failed to load episodes.</div>';
+            }
+        }
+
+        function toggleSortOrder() {
+            episodeSortOrder = episodeSortOrder === 'asc' ? 'desc' : 'asc';
+            const sortIcon = document.getElementById('episodeSortIcon');
+            if (sortIcon) {
+                if (episodeSortOrder === 'asc') {
+                    sortIcon.className = 'fas fa-sort-numeric-down text-sm';
+                } else {
+                    sortIcon.className = 'fas fa-sort-numeric-up text-sm';
+                }
+            }
+            renderEpisodes();
+        }
+
+        function renderEpisodes() {
+            const grid = document.getElementById('episodeGrid');
+            const searchQuery = document.getElementById('episodeSearchInput')?.value.toLowerCase().trim() || '';
+            grid.innerHTML = '';
+
+            // Filter episodes
+            let filtered = allEpisodes.filter(ep => {
+                const titleMatch = ep.name?.toLowerCase().includes(searchQuery);
+                const overviewMatch = ep.overview?.toLowerCase().includes(searchQuery);
+                const epNumMatch = String(ep.episode_number) === searchQuery;
+                return titleMatch || overviewMatch || epNumMatch;
+            });
+
+            // Sort episodes
+            filtered.sort((a, b) => {
+                if (episodeSortOrder === 'asc') {
+                    return a.episode_number - b.episode_number;
+                } else {
+                    return b.episode_number - a.episode_number;
+                }
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div class="py-12 text-center text-zinc-500 text-sm">No episodes found.</div>';
+                return;
+            }
+
+            filtered.forEach(ep => {
+                const selectEl = document.getElementById('seasonSelect');
+                const selectedSeason = selectEl ? parseInt(selectEl.value) : activeSeasonNum;
+                const isActive = activeSeasonNum === selectedSeason && activeEpisodeNum === ep.episode_number;
+                
+                const card = document.createElement('div');
+                card.className = `episode-card flex flex-col sm:flex-row gap-5 py-5 px-4 rounded-xl cursor-pointer transition-all border border-transparent hover:bg-white/[0.02] ${isActive ? 'bg-rose-600/10 border-rose-600/20' : ''}`;
+                
+                const imgUrl = ep.still_path 
+                    ? `https://image.tmdb.org/t/p/w300${ep.still_path}` 
+                    : (showBackdropPath ? `https://image.tmdb.org/t/p/w300${showBackdropPath}` : 'https://placehold.co/300x169/09090b/fafafa?text=No+Preview');
+
+                const runtimeVal = ep.runtime || generalShowRuntime;
+                const runtimeText = runtimeVal ? `${runtimeVal} min` : '';
+
+                card.innerHTML = `
+                    <!-- Left: Thumbnail with badge -->
+                    <div class="relative w-full sm:w-52 aspect-video rounded-xl overflow-hidden bg-zinc-900 flex-shrink-0 shadow-md">
+                        <img src="${imgUrl}" alt="${ep.name}" class="w-full h-full object-cover transition-transform duration-500 hover:scale-105" loading="lazy">
+                        <div class="absolute bottom-2.5 left-2.5 bg-black/85 px-2.5 py-1 rounded-md text-[11px] font-bold text-white min-w-[22px] text-center border border-white/10 shadow-lg">
+                            ${ep.episode_number}
+                        </div>
+                    </div>
+                    
+                    <!-- Right: Information -->
+                    <div class="flex-1 flex flex-col justify-center space-y-1.5 min-w-0">
+                        <div class="flex items-start justify-between gap-4">
+                            <h4 class="font-bold text-white text-base sm:text-lg leading-tight transition-colors ${isActive ? 'text-rose-500' : 'group-hover:text-rose-500'}">
+                                ${ep.name}
+                            </h4>
+                        </div>
+                        ${runtimeText ? `<div class="text-xs text-zinc-500 font-semibold">${runtimeText}</div>` : ''}
+                        <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed line-clamp-2 sm:line-clamp-3">
+                            ${ep.overview || 'No description available for this episode.'}
+                        </p>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => {
+                    activeSeasonNum = selectedSeason;
+                    activeEpisodeNum = ep.episode_number;
+
+                    // Re-render to update highlighting
+                    renderEpisodes();
+
+                    // Open play modal
+                    openPlayerModal();
+                });
+
+                grid.appendChild(card);
+            });
+        }
+
+        const AWARDS_MAP = {
+            "238": "Won 3 Academy Awards (including Best Picture, Best Actor, and Best Adapted Screenplay).",
+            "278": "Nominated for 7 Academy Awards (including Best Picture, Best Actor, and Best Adapted Screenplay).",
+            "240": "Won 6 Academy Awards (including Best Picture, Best Director, and Best Supporting Actor).",
+            "680": "Won the Academy Award for Best Original Screenplay and the Palme d'Or at Cannes Film Festival.",
+            "13": "Won 6 Academy Awards (including Best Picture, Best Actor, and Best Director).",
+            "122": "Won 11 Academy Awards (Clean Sweep, including Best Picture, Best Director, and Best Adapted Screenplay).",
+            "155": "Won 2 Academy Awards (including Best Supporting Actor for Heath Ledger).",
+            "424": "Won 7 Academy Awards (including Best Picture, Best Director, and Best Original Score).",
+            "120": "Won 4 Academy Awards and received 13 total nominations.",
+            "121": "Won 2 Academy Awards and received 6 total nominations.",
+            "27205": "Won 4 Academy Awards and received 8 total nominations.",
+            "157336": "Won the Academy Award for Best Visual Effects.",
+            "857": "Won 5 Academy Awards (including Best Director for Steven Spielberg).",
+            "19995": "Won 3 Academy Awards (including Best Cinematography and Best Art Direction).",
+            "597": "Won 11 Academy Awards (including Best Picture, Best Director, and Best Original Song).",
+            "324857": "Won the Academy Award for Best Animated Feature.",
+            "475557": "Won 2 Academy Awards (including Best Actor for Joaquin Phoenix).",
+            "194": "Nominated for 5 Academy Awards and won 4 BAFTA Awards.",
+            "274": "Won 5 Academy Awards (The Big Five, including Best Picture, Best Director, Best Actor, and Best Actress).",
+            "11": "Won 6 Academy Awards and a Special Achievement Award.",
+            "769": "Won the Academy Award for Best Supporting Actor for Joe Pesci.",
+            "550": "Nominated for the Academy Award for Best Sound Editing.",
+            "1891": "Won the Academy Award for Best Sound and a Special Achievement Award.",
+            "603": "Won 4 Academy Awards (including Best Visual Effects and Best Sound).",
+            "510": "Won 5 Academy Awards (The Big Five, including Best Picture, Best Director, Best Actor, and Best Actress)."
+        };
+
+        async function showMovieAwards() {
+            const container = document.getElementById('awardsSection');
+            const textEl = document.getElementById('movieAwardsText');
+            if (!container || !textEl) return;
+
+            // 1. Check if we have hardcoded details for this movie
+            if (currentType === 'movie' && AWARDS_MAP[currentMovieId]) {
+                textEl.innerText = AWARDS_MAP[currentMovieId];
+                container.classList.remove('hidden');
+                return;
+            }
+
+            // 2. Otherwise query TMDB keywords to detect general award status
+            try {
+                const res = await fetch(`${TMDB_BASE}/${currentType}/${currentMovieId}/keywords?api_key=${TMDB_API_KEY}`);
+                const data = await res.json();
+                const keywords = data.keywords || data.results || [];
+                const hasAwardKeyword = keywords.some(k => {
+                    const name = (k.name || '').toLowerCase();
+                    return name.includes('oscar') || name.includes('academy award') || name.includes('golden globe') || name.includes('award winner') || name.includes('bafta');
+                });
+
+                if (hasAwardKeyword) {
+                    textEl.innerText = "Recognized as a prestigious award nominee / winner for its cinematic excellence.";
+                    container.classList.remove('hidden');
+                } else {
+                    container.classList.add('hidden');
+                }
+            } catch (err) {
+                console.error("Failed to query movie awards:", err);
             }
         }
 
@@ -520,6 +1077,16 @@
                 document.getElementById('jumpToEpisodesBtn').addEventListener('click', () => {
                     document.getElementById('tvSelectorContainer').scrollIntoView({ behavior: 'smooth' });
                 });
+
+                // Load from history if available to resume at last watched season/episode
+                try {
+                    const history = JSON.parse(localStorage.getItem('sw_history') || '[]');
+                    const lastWatched = history.find(item => item.id == currentMovieId && item.type === 'tv');
+                    if (lastWatched) {
+                        activeSeasonNum = lastWatched.season || 1;
+                        activeEpisodeNum = lastWatched.episode || 1;
+                    }
+                } catch(e) {}
             }
 
             // Link "Similars" jump button
@@ -588,7 +1155,9 @@
                     document.getElementById('movieRuntime').innerText = runtime;
                     document.getElementById('movieGenres').innerText = genresList || "N/A";
                     
+                    generalShowRuntime = data.runtime || (data.episode_run_time ? data.episode_run_time[0] : null);
                     if (data.backdrop_path) {
+                        showBackdropPath = data.backdrop_path;
                         // Set the static image that shows while video loads
                         const staticImg = document.getElementById('backdropStatic');
                         if (staticImg) staticImg.src = `${BACKDROP_BASE}${data.backdrop_path}`;
@@ -607,16 +1176,39 @@
                         });
 
                         select.addEventListener('change', (e) => {
+                            activeSeasonNum = parseInt(e.target.value);
+                            // Reset search query when switching seasons
+                            const searchInput = document.getElementById('episodeSearchInput');
+                            if (searchInput) searchInput.value = '';
                             fetchEpisodes(e.target.value);
                         });
 
-                        if (validSeasons.length > 0) {
-                            fetchEpisodes(validSeasons[0].season_number);
+                        // Set up search and sort listeners once
+                        const searchInput = document.getElementById('episodeSearchInput');
+                        if (searchInput) {
+                            searchInput.removeEventListener('input', renderEpisodes);
+                            searchInput.addEventListener('input', renderEpisodes);
                         }
+
+                        const sortBtn = document.getElementById('episodeSortBtn');
+                        if (sortBtn) {
+                            sortBtn.removeEventListener('click', toggleSortOrder);
+                            sortBtn.addEventListener('click', toggleSortOrder);
+                        }
+
+                        // Check if activeSeasonNum is valid, otherwise default to first
+                        const hasActiveSeason = validSeasons.some(s => s.season_number === activeSeasonNum);
+                        if (!hasActiveSeason && validSeasons.length > 0) {
+                            activeSeasonNum = validSeasons[0].season_number;
+                        }
+                        select.value = activeSeasonNum;
+                        fetchEpisodes(activeSeasonNum);
                     }
                     
                     document.getElementById('movieRating').innerText = data.vote_average ? data.vote_average.toFixed(1) : "0.0";
                     document.getElementById('movieRtScore').innerText = data.vote_average ? Math.round(data.vote_average * 10) : "0";
+                    
+                    showMovieAwards();
                     
                     // Fade in the hero content block now that everything is populated
                     const heroContent = document.getElementById('heroContent');
@@ -628,6 +1220,9 @@
 
                 // Initialize recommendations (infinite scroll)
                 initRecommendations();
+
+                // Initialize custom player listeners
+                initPlayerControllers();
 
             } catch (err) {
                 console.error("Details API pipeline failed:", err);
