@@ -329,7 +329,7 @@
                 <h2 class="text-2xl font-bold text-white">You may like</h2>
             </div>
             <!-- Vertical posters layout -->
-            <div id="recommendationsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6 gap-4">
+            <div id="recommendationsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-6 xl:grid-cols-6 gap-4">
                 <!-- Injected dynamically -->
             </div>
             <!-- Invisible trigger element for IntersectionObserver -->
@@ -598,7 +598,7 @@
                                         const volBtn = document.getElementById('trailerVolumeBtn');
                                         if (volBtn) volBtn.classList.remove('hidden');
                                         if (!trailerIsPlaying) enableHeroFocusMode();
-                                    }, 4000);
+                                    }, 4500);
                                 } else {
                                     const wrapper = document.getElementById('trailer-wrapper');
                                     const staticImg = document.getElementById('backdropStatic');
@@ -1634,7 +1634,7 @@
                                                                  spinner.classList.add('opacity-0');
                                                                  if (cardLogo) cardLogo.classList.add('opacity-0');
                                                              }
-                                                         }, 4000);
+                                                         }, 4500);
                                                      } else {
                                                          clearTimeout(playTimeout);
                                                          if (trailerWrapper) {
