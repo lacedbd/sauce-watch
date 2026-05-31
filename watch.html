@@ -186,8 +186,8 @@
         <div id="ambientBackdrop" class="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
             <!-- Scaled container to push UI out of bounds. Hidden initially with 0.01 opacity to bypass iOS Safari rendering block. -->
             <div id="trailer-wrapper" class="absolute top-1/2 left-1/2 w-[300vh] h-[150vh] md:w-[150vw] md:h-[150vh] -translate-x-1/2 -translate-y-1/2 z-0 transition-opacity duration-1000" style="opacity: 0.01;">
-                <!-- The API will inject the iframe right here -->
-                <div id="youtube-player" class="w-full h-full pointer-events-none"></div>
+                <!-- The native HTML5 video player injected by JS -->
+                <video id="trailer-video" class="w-full h-full object-cover pointer-events-none" autoplay muted loop playsinline></video>
             </div>
         </div>
 
@@ -515,138 +515,62 @@
         let activeEpisodeNum = 1;
 
 
-        // YouTube IFrame Player API Integration
-        let trailerPlayer;
-        let ytApiReady = false;
-        let pendingTrailerKey = '';
-
-        // Load YouTube IFrame Player API script dynamically
-        const tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        const firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-        window.onYouTubeIframeAPIReady = () => {
-            ytApiReady = true;
-            if (pendingTrailerKey) {
-                setupTrailerPlayer(pendingTrailerKey);
-            }
-        };
-
-        function setupTrailerPlayer(videoKey) {
-            trailerPlayer = new YT.Player('youtube-player', {
-                width: '1920',
-                height: '1080',
-                videoId: videoKey,
-                playerVars: {
-                    autoplay: 1,
-                    mute: 1,
-                    controls: 0,
-                    showinfo: 0,
-                    rel: 0,
-                    iv_load_policy: 3,
-                    loop: 1,
-                    playlist: videoKey,
-                    playsinline: 1,
-                    disablekb: 1,
-                    fs: 0,
-                    modestbranding: 1,
-                    vq: 'large'
-                },
-                events: {
-                    onReady: (event) => {
-                        event.target.setPlaybackQuality('large');
-                        event.target.mute();
-                        event.target.playVideo();
-                    },
-                    onStateChange: (event) => {
-                        const wrapper = document.getElementById('trailer-wrapper');
-                        const staticImg = document.getElementById('backdropStatic');
-                        
-                        if (event.data === YT.PlayerState.PLAYING) {
-                            event.target.setPlaybackQuality('large'); // Force high quality
-                            
-                            if (!wrapper.dataset.hasPlayed) {
-                                wrapper.dataset.hasPlayed = "true";
-                                // THE MAGIC TRICK: Wait 4.0s for YouTube overlays to auto-hide before revealing
-                                setTimeout(() => {
-                                    if (wrapper) {
-                                        wrapper.style.transition = 'opacity 1s ease';
-                                        wrapper.style.opacity = '1';
-                                    }
-                                    if (staticImg) staticImg.style.opacity = '0';
-                                    document.getElementById('trailerVolumeBtn').classList.remove('hidden');
-                                    
-                                    // Activate idle-mode: mouse stops moving → UI collapses to show trailer
-                                    if (!trailerIsPlaying) enableHeroFocusMode();
-                                }, 4000);
-                            } else {
-                                // Resuming from background tab pause
-                                // YouTube redraws the play icon on pause, so we must wait for it to fade out again
-                                setTimeout(() => {
-                                    if (wrapper) {
-                                        wrapper.style.transition = 'opacity 1s ease';
-                                        wrapper.style.opacity = '1';
-                                    }
-                                }, 2000);
-                            }
-                        }
-                        if (event.data === YT.PlayerState.PAUSED) {
-                            // Immediately hide wrapper to prevent showing the big center pause icon when tab loses focus
-                            if (wrapper) {
-                                wrapper.style.transition = 'none';
-                                wrapper.style.opacity = '0.01';
-                            }
-                            event.target.playVideo();
-                        }
-                    }
-                }
-            });
-        }
-
-
-
-        // Fetch trailers/videos from TMDB API
+        // Fetch trailer video url from Vercel edge proxy
         async function fetchAndSetupTrailerBackground() {
             try {
+                // Get YouTube key from TMDB
                 const res = await fetchTMDB(`${TMDB_BASE}/${currentType}/${currentMovieId}/videos?api_key=${TMDB_API_KEY}`);
                 const data = await res.json();
                 const videos = data.results || [];
                 const trailer = videos.find(v => v.site === 'YouTube' && v.type === 'Trailer') ||
                                 videos.find(v => v.site === 'YouTube' && v.type === 'Teaser') ||
                                 videos.find(v => v.site === 'YouTube');
+                
                 if (!trailer) return;
 
-                function doInjectPlayer() {
-                    const playerContainer = document.getElementById('trailer-wrapper');
-                    if (!playerContainer || document.getElementById('youtube-player').tagName === 'IFRAME') return;
-                    // The #youtube-player div is already in the HTML from the wrapper
-                    if (ytApiReady) {
-                        setupTrailerPlayer(trailer.key);
-                    } else {
-                        pendingTrailerKey = trailer.key;
+                // Call our Vercel Serverless Function to extract the raw MP4 URL
+                const proxyRes = await fetch(`/api/trailer?id=${trailer.key}`);
+                const proxyData = await proxyRes.json();
+                
+                if (proxyData.url) {
+                    const videoEl = document.getElementById('trailer-video');
+                    if (videoEl) {
+                        videoEl.src = proxyData.url;
+                        videoEl.play().then(() => {
+                            const wrapper = document.getElementById('trailer-wrapper');
+                            const staticImg = document.getElementById('backdropStatic');
+                            
+                            if (!wrapper.dataset.hasPlayed) {
+                                wrapper.dataset.hasPlayed = "true";
+                                // Fade in instantly, no 4s wait because native video has no UI overlays!
+                                wrapper.style.transition = 'opacity 1s ease';
+                                wrapper.style.opacity = '1';
+                                if (staticImg) staticImg.style.opacity = '0';
+                                document.getElementById('trailerVolumeBtn').classList.remove('hidden');
+                                
+                                if (!trailerIsPlaying) enableHeroFocusMode();
+                            }
+                        }).catch(e => console.error("Video autoplay blocked", e));
                     }
                 }
-
-                // Unconditionally inject player. Modern mobile browsers allow muted autoplay.
-                doInjectPlayer();
             } catch (err) {
                 console.error('Failed to load background trailer video:', err);
             }
         }
 
-        // Toggle volume for YouTube trailer background using official Player API
+        // Toggle volume for native trailer background
         document.getElementById('trailerVolumeBtn').addEventListener('click', () => {
-            if (!trailerPlayer || typeof trailerPlayer.mute !== 'function') return;
+            const videoEl = document.getElementById('trailer-video');
+            if (!videoEl) return;
             
             isMuted = !isMuted;
             const volumeIcon = document.getElementById('volumeIcon');
             
+            videoEl.muted = isMuted;
+            
             if (isMuted) {
-                trailerPlayer.mute();
                 volumeIcon.className = "fas fa-volume-mute";
             } else {
-                trailerPlayer.unMute();
                 volumeIcon.className = "fas fa-volume-up text-red-500";
             }
         });
@@ -1424,9 +1348,9 @@
                                 <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-white flex items-center gap-1 opacity-0 transition-opacity z-10" id="volIcon-${item.id}">
                                     <i class="fas fa-volume-mute text-xs"></i>
                                 </div>
-                                <!-- Normal wrapper, relying on 4.0s timeout to hide YouTube UI -->
-                                <div id="trailer-wrapper-${item.id}" class="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-0 transition-opacity duration-700" style="opacity: 0.01;">
-                                    <div id="trailer-player-${item.id}" class="w-full h-full pointer-events-none"></div>
+                                <!-- Native HTML5 hover trailer -->
+                                <div id="trailer-wrapper-${item.id}" class="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-0 transition-opacity duration-300" style="opacity: 0.01;">
+                                    <video id="trailer-player-${item.id}" class="w-full h-full object-cover pointer-events-none" autoplay muted loop playsinline></video>
                                 </div>
                             </div>
                             <div class="px-1 mt-2">
@@ -1459,7 +1383,7 @@
                         // Add Hover Trailer Logic (only on desktop/non-touch)
                         if (!('ontouchstart' in window)) {
                             let hoverTimer = null;
-                            let cardYtPlayer = null;
+                            let cardVideoEl = null;
                             const trailerWrapper = card.querySelector(`#trailer-wrapper-${item.id}`);
                             const trailerPlayerDiv = card.querySelector(`#trailer-player-${item.id}`);
                             const volIcon = card.querySelector(`#volIcon-${item.id}`);
@@ -1468,7 +1392,7 @@
 
                             card.addEventListener('mouseenter', () => {
                                 hoverTimer = setTimeout(async () => {
-                                    if (cardYtPlayer) {
+                                    if (cardVideoEl) {
                                         trailerWrapper.style.opacity = '1';
                                         volIcon.classList.remove('opacity-0');
                                         if (cardLogo) cardLogo.classList.add('opacity-0');
@@ -1483,59 +1407,32 @@
                                         const vids = vidData.results || [];
                                         const trailer = vids.find(v => v.type === 'Trailer' && v.site === 'YouTube') || vids.find(v => v.site === 'YouTube');
                                         
-                                        if (trailer && ytApiReady) {
-                                            cardYtPlayer = new YT.Player(`trailer-player-${item.id}`, {
-                                                videoId: trailer.key,
-                                                width: '100%',
-                                                height: '100%',
-                                                playerVars: {
-                                                    autoplay: 1,
-                                                    mute: 1,
-                                                    controls: 0,
-                                                    showinfo: 0,
-                                                    rel: 0,
-                                                    iv_load_policy: 3,
-                                                    loop: 1,
-                                                    playlist: trailer.key,
-                                                    playsinline: 1,
-                                                    disablekb: 1,
-                                                    fs: 0,
-                                                    modestbranding: 1,
-                                                    vq: 'small' // 360p
-                                                },
-                                                events: {
-                                                    onReady: (event) => {
-                                                        event.target.setPlaybackQuality('small');
-                                                        event.target.mute();
-                                                        event.target.playVideo();
-                                                    },
-                                                    onStateChange: (event) => {
-                                                        if (event.data === YT.PlayerState.PLAYING) {
-                                                            event.target.setPlaybackQuality('small');
-                                                            // Hide UI by waiting a moment after it starts playing
-                                                            // We wait 4.0s to ensure the YouTube play button and title completely fade out
-                                                            setTimeout(() => {
-                                                                if (card.matches(':hover') && trailerWrapper) {
-                                                                    trailerWrapper.style.transition = 'opacity 0.8s ease';
-                                                                    trailerWrapper.style.opacity = '1';
-                                                                    volIcon.classList.remove('opacity-0');
-                                                                    spinner.classList.add('opacity-0');
-                                                                    if (cardLogo) cardLogo.classList.add('opacity-0');
-                                                                }
-                                                            }, 4000);
-                                                        }
-                                                        if (event.data === YT.PlayerState.PAUSED) {
-                                                            // Force play if it randomly pauses
-                                                            event.target.playVideo();
-                                                        }
+                                        if (trailer) {
+                                            const proxyRes = await fetch(`/api/trailer?id=${trailer.key}`);
+                                            const proxyData = await proxyRes.json();
+                                            
+                                            if (proxyData.url) {
+                                                const videoEl = trailerPlayerDiv;
+                                                videoEl.src = proxyData.url;
+                                                cardVideoEl = videoEl;
+                                                
+                                                videoEl.play().then(() => {
+                                                    if (card.matches(':hover') && trailerWrapper) {
+                                                        trailerWrapper.style.transition = 'opacity 0.5s ease';
+                                                        trailerWrapper.style.opacity = '1';
+                                                        volIcon.classList.remove('opacity-0');
+                                                        spinner.classList.add('opacity-0');
+                                                        if (cardLogo) cardLogo.classList.add('opacity-0');
                                                     }
-                                                }
-                                            });
+                                                }).catch(e => console.error(e));
+                                            } else {
+                                                spinner.classList.add('opacity-0');
+                                            }
                                         } else {
                                             spinner.classList.add('opacity-0');
                                         }
-                                    } catch (e) { 
-                                        console.error(e); 
+                                    } catch (err) {
+                                        console.error('Failed to load hover trailer:', err);
                                         spinner.classList.add('opacity-0');
                                     }
                                 }, 500); // 500ms hover intent delay
