@@ -541,6 +541,7 @@
         }
 
         let ytPlayer = null;
+        let bgPlayTimeout = null;
 
         function setupYoutubeTrailerPlayer(ytKey) {
             const wrapper = document.getElementById('trailer-wrapper');
@@ -582,16 +583,34 @@
                                     iframe.style.pointerEvents = 'none';
                                     iframe.classList.add('pointer-events-none');
                                 }
-                                wrapper.style.transition = 'opacity 0.8s ease';
-                                wrapper.style.opacity = '1';
-                                const staticImg = document.getElementById('backdropStatic');
-                                if (staticImg) staticImg.style.opacity = '0';
-                                const volBtn = document.getElementById('trailerVolumeBtn');
-                                if (volBtn) volBtn.classList.remove('hidden');
-                                if (!trailerIsPlaying) enableHeroFocusMode();
                             },
                             onStateChange: (e) => {
-                                if (e.data === YT.PlayerState.PAUSED) e.target.playVideo();
+                                if (e.data === YT.PlayerState.PLAYING) {
+                                    clearTimeout(bgPlayTimeout);
+                                    bgPlayTimeout = setTimeout(() => {
+                                        const wrapper = document.getElementById('trailer-wrapper');
+                                        const staticImg = document.getElementById('backdropStatic');
+                                        if (wrapper) {
+                                            wrapper.style.transition = 'opacity 0.8s ease';
+                                            wrapper.style.opacity = '1';
+                                        }
+                                        if (staticImg) staticImg.style.opacity = '0';
+                                        const volBtn = document.getElementById('trailerVolumeBtn');
+                                        if (volBtn) volBtn.classList.remove('hidden');
+                                        if (!trailerIsPlaying) enableHeroFocusMode();
+                                    }, 4000);
+                                } else {
+                                    const wrapper = document.getElementById('trailer-wrapper');
+                                    const staticImg = document.getElementById('backdropStatic');
+                                    if (wrapper) wrapper.style.opacity = '0';
+                                    if (staticImg) staticImg.style.opacity = '1';
+                                    const volBtn = document.getElementById('trailerVolumeBtn');
+                                    if (volBtn) volBtn.classList.add('hidden');
+                                    
+                                    if (e.data === YT.PlayerState.PAUSED) {
+                                        e.target.playVideo();
+                                    }
+                                }
                             }
                         }
                     });
@@ -1563,8 +1582,9 @@
                                                                  spinner.classList.add('opacity-0');
                                                                  if (cardLogo) cardLogo.classList.add('opacity-0');
                                                              }
-                                                         }, 3500);
+                                                         }, 4000);
                                                      } else {
+                                                         clearTimeout(playTimeout);
                                                          if (trailerWrapper) {
                                                              trailerWrapper.style.opacity = '0.01';
                                                          }
