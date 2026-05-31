@@ -499,6 +499,16 @@
         </select>
       </div>
 
+      <div class="filter-select">
+        <select id="filterAwards">
+          <option value="all">Awards</option>
+          <option value="3211">Oscar Winning</option>
+          <option value="4434">Emmy Winning</option>
+          <option value="305">Golden Globe</option>
+          <option value="818">Award Winning</option>
+        </select>
+      </div>
+
       <div class="filter-select col-span-2-mobile">
         <select id="filterPlatform">
           <option value="all">Platform</option>
@@ -737,7 +747,7 @@
     });
 
     // Wire up all other filter changes (they will reset Category)
-    ['filterType','filterGenre','filterSort','filterYear','filterCountry','filterRating','filterPlatform'].forEach(id => {
+    ['filterType','filterGenre','filterSort','filterYear','filterCountry','filterRating','filterAwards','filterPlatform'].forEach(id => {
       document.getElementById(id).addEventListener('change', () => {
         currentList = null; // Clear list mode on manual filter change
         document.getElementById('filterCategory').value = 'all';
@@ -837,6 +847,7 @@
       if (p.get('year')) document.getElementById('filterYear').value = p.get('year');
       if (p.get('country')) document.getElementById('filterCountry').value = p.get('country');
       if (p.get('rating')) document.getElementById('filterRating').value = p.get('rating');
+      if (p.get('awards')) document.getElementById('filterAwards').value = p.get('awards');
       if (p.get('platform')) document.getElementById('filterPlatform').value = p.get('platform');
     }
   }
@@ -849,6 +860,7 @@
     const year = document.getElementById('filterYear').value;
     const country = document.getElementById('filterCountry').value;
     const rating = document.getElementById('filterRating').value;
+    const awards = document.getElementById('filterAwards').value;
     const platform = document.getElementById('filterPlatform').value;
 
     const params = new URLSearchParams();
@@ -862,6 +874,7 @@
       if (year !== 'all') params.set('year', year);
       if (country !== 'all') params.set('country', country);
       if (rating !== 'all') params.set('rating', rating);
+      if (awards !== 'all') params.set('awards', awards);
       if (platform !== 'all') params.set('platform', platform);
     }
 
@@ -879,6 +892,7 @@
     const year = document.getElementById('filterYear').value;
     const country = document.getElementById('filterCountry').value;
     const rating = document.getElementById('filterRating').value;
+    const awards = document.getElementById('filterAwards').value;
     const platform = document.getElementById('filterPlatform').value;
 
     if (currentPage === 1) {
@@ -982,6 +996,7 @@
           }
           if (country !== 'all') url += `&with_origin_country=${country}`;
           if (rating !== 'all') url += `&vote_average.gte=${rating}&vote_count.gte=100`;
+          if (awards !== 'all') url += `&with_keywords=${awards}`;
           if (platform !== 'all') url += `&with_watch_providers=${platform}&watch_region=US`;
 
           const r = await fetchTMDB(url);
@@ -1114,6 +1129,7 @@
     document.getElementById('filterYear').value = 'all';
     document.getElementById('filterCountry').value = 'all';
     document.getElementById('filterRating').value = 'all';
+    document.getElementById('filterAwards').value = 'all';
     document.getElementById('filterPlatform').value = 'all';
     window.history.replaceState({}, document.title, window.location.pathname);
     currentPage = 1;
@@ -1129,6 +1145,7 @@
       { id: 'filterYear', defaultVal: 'all' },
       { id: 'filterCountry', defaultVal: 'all' },
       { id: 'filterRating', defaultVal: 'all' },
+      { id: 'filterAwards', defaultVal: 'all' },
       { id: 'filterPlatform', defaultVal: 'all' }
     ];
 
