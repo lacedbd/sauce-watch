@@ -546,8 +546,11 @@
             const wrapper = document.getElementById('trailer-wrapper');
             if (!wrapper) return;
             
-            // Remove the video element if it exists and replace with empty div for YouTube player
-            wrapper.innerHTML = `<div id="youtube-player" class="w-full h-full pointer-events-none"></div>`;
+            // Remove the video element if it exists and replace with empty div for YouTube player and a transparent overlay to block click events from reaching the iframe
+            wrapper.innerHTML = `
+                <div id="youtube-player" class="w-full h-full pointer-events-none"></div>
+                <div class="absolute inset-0 bg-transparent z-10 pointer-events-auto"></div>
+            `;
             
             // Load YouTube Iframe API if not loaded
             if (!window.YT) {
@@ -574,6 +577,11 @@
                             onReady: (e) => {
                                 e.target.mute();
                                 e.target.playVideo();
+                                const iframe = e.target.getIframe();
+                                if (iframe) {
+                                    iframe.style.pointerEvents = 'none';
+                                    iframe.classList.add('pointer-events-none');
+                                }
                                 wrapper.style.transition = 'opacity 0.8s ease';
                                 wrapper.style.opacity = '1';
                                 const staticImg = document.getElementById('backdropStatic');
@@ -1500,7 +1508,10 @@
                             const cardLogo = card.querySelector(`#logo-${item.id}`);
 
                             function loadYoutubeHoverTrailer(ytKey) {
-                                trailerWrapper.innerHTML = `<div id="yt-hover-${item.id}" class="w-full h-full pointer-events-none"></div>`;
+                                trailerWrapper.innerHTML = `
+                                     <div id="yt-hover-${item.id}" class="w-full h-full pointer-events-none"></div>
+                                     <div class="absolute inset-0 bg-transparent z-10 pointer-events-auto"></div>
+                                 `;
                                 
                                 if (!window.YT) {
                                     const tag = document.createElement('script');
@@ -1528,6 +1539,11 @@
                                                 onReady: (e) => {
                                                     e.target.mute();
                                                     e.target.playVideo();
+                                                    const iframe = e.target.getIframe();
+                                                    if (iframe) {
+                                                        iframe.style.pointerEvents = 'none';
+                                                        iframe.classList.add('pointer-events-none');
+                                                    }
                                                 },
                                                 onStateChange: (e) => {
                                                     if (e.data === YT.PlayerState.PLAYING) {
