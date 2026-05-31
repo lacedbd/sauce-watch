@@ -1508,62 +1508,81 @@
                             const cardLogo = card.querySelector(`#logo-${item.id}`);
 
                             function loadYoutubeHoverTrailer(ytKey) {
-                                trailerWrapper.innerHTML = `
-                                     <div id="yt-hover-${item.id}" class="w-full h-full pointer-events-none"></div>
+                                 trailerWrapper.innerHTML = `
+                                     <div id="yt-hover-${item.id}" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400%] h-[150%] max-w-none pointer-events-none"></div>
                                      <div class="absolute inset-0 bg-transparent z-10 pointer-events-auto"></div>
                                  `;
-                                
-                                if (!window.YT) {
-                                    const tag = document.createElement('script');
-                                    tag.src = "https://www.youtube.com/iframe_api";
-                                    const firstScriptTag = document.getElementsByTagName('script')[0];
-                                    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-                                }
-                                
-                                const checkYT = setInterval(() => {
-                                    if (window.YT && window.YT.Player) {
-                                        clearInterval(checkYT);
-                                        if (!card.matches(':hover')) return; // Abort if user left
-                                        
-                                        cardYtPlayer = new YT.Player(`yt-hover-${item.id}`, {
-                                            videoId: ytKey,
-                                            width: '100%',
-                                            height: '100%',
-                                            playerVars: {
-                                                autoplay: 1, mute: 1, controls: 0, showinfo: 0,
-                                                rel: 0, iv_load_policy: 3, loop: 1,
-                                                playlist: ytKey, playsinline: 1,
-                                                disablekb: 1, fs: 0, modestbranding: 1, vq: 'small'
-                                            },
-                                            events: {
-                                                onReady: (e) => {
-                                                    e.target.mute();
-                                                    e.target.playVideo();
-                                                    const iframe = e.target.getIframe();
-                                                    if (iframe) {
-                                                        iframe.style.pointerEvents = 'none';
-                                                        iframe.classList.add('pointer-events-none');
-                                                    }
-                                                },
-                                                onStateChange: (e) => {
-                                                    if (e.data === YT.PlayerState.PLAYING) {
-                                                        setTimeout(() => {
-                                                            if (card.matches(':hover') && trailerWrapper) {
-                                                                trailerWrapper.style.transition = 'opacity 0.5s ease';
-                                                                trailerWrapper.style.opacity = '1';
-                                                                volIcon.classList.remove('opacity-0');
-                                                                spinner.classList.add('opacity-0');
-                                                                if (cardLogo) cardLogo.classList.add('opacity-0');
-                                                            }
-                                                        }, 500);
-                                                    }
-                                                    if (e.data === YT.PlayerState.PAUSED) e.target.playVideo();
-                                                }
-                                            }
-                                        });
-                                    }
-                                }, 100);
-                            }
+                                 
+                                 if (!window.YT) {
+                                     const tag = document.createElement('script');
+                                     tag.src = "https://www.youtube.com/iframe_api";
+                                     const firstScriptTag = document.getElementsByTagName('script')[0];
+                                     firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+                                 }
+                                 
+                                 const checkYT = setInterval(() => {
+                                     if (window.YT && window.YT.Player) {
+                                         clearInterval(checkYT);
+                                         if (!card.matches(':hover')) return; // Abort if user left
+                                         
+                                         cardYtPlayer = new YT.Player(`yt-hover-${item.id}`, {
+                                             videoId: ytKey,
+                                             width: '100%',
+                                             height: '100%',
+                                             playerVars: {
+                                                 autoplay: 1, mute: 1, controls: 0, showinfo: 0,
+                                                 rel: 0, iv_load_policy: 3, loop: 1,
+                                                 playlist: ytKey, playsinline: 1,
+                                                 disablekb: 1, fs: 0, modestbranding: 1, vq: 'small'
+                                             },
+                                             events: {
+                                                 onReady: (e) => {
+                                                     e.target.mute();
+                                                     e.target.playVideo();
+                                                     const iframe = e.target.getIframe();
+                                                     if (iframe) {
+                                                         iframe.style.pointerEvents = 'none';
+                                                         iframe.style.position = 'absolute';
+                                                         iframe.style.top = '50%';
+                                                         iframe.style.left = '50%';
+                                                         iframe.style.transform = 'translate(-50%, -50%)';
+                                                         iframe.style.width = '400%';
+                                                         iframe.style.height = '150%';
+                                                         iframe.style.maxWidth = 'none';
+                                                         iframe.classList.add('absolute', 'top-1/2', 'left-1/2', '-translate-x-1/2', '-translate-y-1/2', 'w-[400%]', 'h-[150%]', 'max-w-none', 'pointer-events-none');
+                                                     }
+                                                 },
+                                                 onStateChange: (e) => {
+                                                     if (e.data === YT.PlayerState.PLAYING) {
+                                                         setTimeout(() => {
+                                                             if (card.matches(':hover') && trailerWrapper) {
+                                                                 trailerWrapper.style.transition = 'opacity 0.5s ease';
+                                                                 trailerWrapper.style.opacity = '1';
+                                                                 volIcon.classList.remove('opacity-0');
+                                                                 spinner.classList.add('opacity-0');
+                                                                 if (cardLogo) cardLogo.classList.add('opacity-0');
+                                                             }
+                                                         }, 500);
+                                                     } else {
+                                                         if (trailerWrapper) {
+                                                             trailerWrapper.style.opacity = '0.01';
+                                                         }
+                                                         if (volIcon) {
+                                                             volIcon.classList.add('opacity-0');
+                                                         }
+                                                         if (cardLogo) {
+                                                             cardLogo.classList.remove('opacity-0');
+                                                         }
+                                                         if (e.data === YT.PlayerState.PAUSED) {
+                                                             e.target.playVideo();
+                                                         }
+                                                     }
+                                                 }
+                                             }
+                                         });
+                                     }
+                                 }, 100);
+                             }
 
                             card.addEventListener('mouseenter', () => {
                                 hoverTimer = setTimeout(async () => {
