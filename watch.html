@@ -514,12 +514,10 @@
         let activeEpisodeNum = 1;
 
 
-        const IMDB_TRAILER_URL = "https://imdb-video.media-imdb.com/mc/vi3273902873/vi3273902873_1080p.mp4?Expires=1780279916&Signature=u3cCZUzfwIkqwy6n0X5vCdFXS3QlrLkwEZXkolvRn2d0EAJYF1HRZjuJ~w21zArQpTMXZfZ-mAh~ReJYyckTg-DFp9VA4Pm2meaqGeSKFP~4GrDVfSRUkAZkdQFByNAkqzQYtOIcev10mVNnOkulAa7unz~4EyqRhtH87Vxe9K9jtK1pbWm8AOXYdCrqG~vIx0H5s~jkwTuuFZqxujZcWMFIHVDbcydx69gAH1vz8WZiSQXxzwnriQ2WUeXRhLg0l9rhdgNU2QB0nWK0cyH2hPEHepITdZEX6AnL5yN0wgdE~VBUGQPU7kQ6cdPKQjxS5h1rRY1B3m18vG9k2VLbFw__&Key-Pair-Id=APKAIFLZBVQZ24NQH3KA";
-
         function setupNativeTrailerPlayer(url) {
             const videoEl = document.getElementById('trailer-video');
-            if (!videoEl) return;
-            videoEl.src = url || IMDB_TRAILER_URL;
+            if (!videoEl || !url) return;
+            videoEl.src = url;
             videoEl.muted = isMuted;
             videoEl.loop = true;
             
@@ -603,20 +601,32 @@
                                 videos.find(v => v.site === 'YouTube');
                 
                 if (trailer) {
-                    const proxyRes = await fetch(`/api/trailer?id=${trailer.key}`);
-                    const proxyData = await proxyRes.json();
-                    if (proxyData.url) {
-                        setupNativeTrailerPlayer(proxyData.url);
-                        return;
-                    } else {
-                        setupYoutubeTrailerPlayer(trailer.key);
-                        return;
+                    try {
+                        const proxyRes = await fetch(`/api/trailer?id=${trailer.key}`);
+                        const proxyData = await proxyRes.json();
+                        if (proxyData && proxyData.url) {
+                            setupNativeTrailerPlayer(proxyData.url);
+                            return;
+                        }
+                    } catch (proxyErr) {
+                        console.error("Proxy trailer fetch failed, falling back to YouTube:", proxyErr);
                     }
+                    
+                    // Fallback to YouTube Player directly
+                    setupYoutubeTrailerPlayer(trailer.key);
+                    return;
                 }
             } catch (err) {
                 console.error("Failed to load background trailer:", err);
             }
-            setupNativeTrailerPlayer(IMDB_TRAILER_URL);
+            
+            // Clean Fallback: If no trailer exists or fetch failed, hide trailer UI & show static backdrop
+            const staticImg = document.getElementById('backdropStatic');
+            if (staticImg) staticImg.style.opacity = '1';
+            const wrapper = document.getElementById('trailer-wrapper');
+            if (wrapper) wrapper.style.opacity = '0';
+            const volBtn = document.getElementById('trailerVolumeBtn');
+            if (volBtn) volBtn.classList.add('hidden');
         }
 
         // Toggle volume for native trailer or youtube trailer
@@ -1557,30 +1567,34 @@
                                         const trailer = vids.find(v => v.type === 'Trailer' && v.site === 'YouTube') || vids.find(v => v.site === 'YouTube');
                                         
                                         if (trailer) {
-                                            const proxyRes = await fetch(`/api/trailer?id=${trailer.key}`);
-                                            const proxyData = await proxyRes.json();
-                                            
-                                            if (proxyData.url) {
-                                                videoPlayer.src = proxyData.url;
-                                                cardVideoEl = videoPlayer;
+                                            try {
+                                                const proxyRes = await fetch(`/api/trailer?id=${trailer.key}`);
+                                                const proxyData = await proxyRes.json();
                                                 
-                                                videoPlayer.onloadeddata = () => {
-                                                    if (card.matches(':hover') && trailerWrapper) {
-                                                        trailerWrapper.style.transition = 'opacity 0.5s ease';
-                                                        trailerWrapper.style.opacity = '1';
-                                                        volIcon.classList.remove('opacity-0');
-                                                        spinner.classList.add('opacity-0');
-                                                        if (cardLogo) cardLogo.classList.add('opacity-0');
-                                                    }
-                                                };
+                                                if (proxyData && proxyData.url) {
+                                                    videoPlayer.src = proxyData.url;
+                                                    cardVideoEl = videoPlayer;
+                                                    
+                                                    videoPlayer.onloadeddata = () => {
+                                                        if (card.matches(':hover') && trailerWrapper) {
+                                                            trailerWrapper.style.transition = 'opacity 0.5s ease';
+                                                            trailerWrapper.style.opacity = '1';
+                                                            volIcon.classList.remove('opacity-0');
+                                                            spinner.classList.add('opacity-0');
+                                                            if (cardLogo) cardLogo.classList.add('opacity-0');
+                                                        }
+                                                    };
 
-                                                videoPlayer.play().catch(e => {
-                                                    console.error("Card trailer autoplay failed:", e);
-                                                    spinner.classList.add('opacity-0');
-                                                });
-                                            } else {
-                                                loadYoutubeHoverTrailer(trailer.key);
+                                                    videoPlayer.play().catch(e => {
+                                                        console.error("Card trailer autoplay failed:", e);
+                                                        spinner.classList.add('opacity-0');
+                                                    });
+                                                    return;
+                                                }
+                                            } catch (proxyErr) {
+                                                console.error("Failed to load card hover proxy stream, falling back to YouTube:", proxyErr);
                                             }
+                                            loadYoutubeHoverTrailer(trailer.key);
                                         } else {
                                             spinner.classList.add('opacity-0');
                                         }
