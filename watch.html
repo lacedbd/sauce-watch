@@ -516,10 +516,10 @@
 
         const IMDB_TRAILER_URL = "https://imdb-video.media-imdb.com/mc/vi3273902873/vi3273902873_1080p.mp4?Expires=1780279916&Signature=u3cCZUzfwIkqwy6n0X5vCdFXS3QlrLkwEZXkolvRn2d0EAJYF1HRZjuJ~w21zArQpTMXZfZ-mAh~ReJYyckTg-DFp9VA4Pm2meaqGeSKFP~4GrDVfSRUkAZkdQFByNAkqzQYtOIcev10mVNnOkulAa7unz~4EyqRhtH87Vxe9K9jtK1pbWm8AOXYdCrqG~vIx0H5s~jkwTuuFZqxujZcWMFIHVDbcydx69gAH1vz8WZiSQXxzwnriQ2WUeXRhLg0l9rhdgNU2QB0nWK0cyH2hPEHepITdZEX6AnL5yN0wgdE~VBUGQPU7kQ6cdPKQjxS5h1rRY1B3m18vG9k2VLbFw__&Key-Pair-Id=APKAIFLZBVQZ24NQH3KA";
 
-        function setupNativeTrailerPlayer() {
+        function setupNativeTrailerPlayer(url) {
             const videoEl = document.getElementById('trailer-video');
             if (!videoEl) return;
-            videoEl.src = IMDB_TRAILER_URL;
+            videoEl.src = url || IMDB_TRAILER_URL;
             videoEl.muted = isMuted;
             videoEl.loop = true;
             
@@ -543,8 +543,26 @@
         }
 
         async function fetchAndSetupTrailerBackground() {
-            // Sourced directly from the high-speed IMDb MP4 link
-            setupNativeTrailerPlayer();
+            try {
+                const res = await fetchTMDB(`${TMDB_BASE}/${currentType}/${currentMovieId}/videos`);
+                const data = await res.json();
+                const videos = data.results || [];
+                const trailer = videos.find(v => v.site === 'YouTube' && v.type === 'Trailer') ||
+                                videos.find(v => v.site === 'YouTube' && v.type === 'Teaser') ||
+                                videos.find(v => v.site === 'YouTube');
+                
+                if (trailer) {
+                    const proxyRes = await fetch(`/api/trailer?id=${trailer.key}`);
+                    const proxyData = await proxyRes.json();
+                    if (proxyData.url) {
+                        setupNativeTrailerPlayer(proxyData.url);
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to load background trailer:", err);
+            }
+            setupNativeTrailerPlayer(IMDB_TRAILER_URL);
         }
 
         // Toggle volume for native trailer
@@ -1408,8 +1426,21 @@
                                     spinner.classList.remove('opacity-0');
                                     
                                     try {
-                                        // Directly play the high-speed IMDb MP4 link
-                                        videoPlayer.src = IMDB_TRAILER_URL;
+                                        const vidRes = await fetchTMDB(`${TMDB_BASE}/${type}/${item.id}/videos`);
+                                        const vidData = await vidRes.json();
+                                        const vids = vidData.results || [];
+                                        const trailer = vids.find(v => v.type === 'Trailer' && v.site === 'YouTube') || vids.find(v => v.site === 'YouTube');
+                                        
+                                        let finalUrl = IMDB_TRAILER_URL;
+                                        if (trailer) {
+                                            const proxyRes = await fetch(`/api/trailer?id=${trailer.key}`);
+                                            const proxyData = await proxyRes.json();
+                                            if (proxyData.url) {
+                                                finalUrl = proxyData.url;
+                                            }
+                                        }
+                                        
+                                        videoPlayer.src = finalUrl;
                                         cardVideoEl = videoPlayer;
                                         
                                         videoPlayer.onloadeddata = () => {
