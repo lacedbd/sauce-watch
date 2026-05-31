@@ -1501,6 +1501,7 @@
                             let hoverTimer = null;
                             let cardVideoEl = null;
                             let cardYtPlayer = null;
+                            let playTimeout = null;
                             const trailerWrapper = card.querySelector(`#trailer-wrapper-${item.id}`);
                             const videoPlayer = card.querySelector(`#trailer-player-${item.id}`);
                             const volIcon = card.querySelector(`#volIcon-${item.id}`);
@@ -1554,7 +1555,7 @@
                                                  },
                                                  onStateChange: (e) => {
                                                      if (e.data === YT.PlayerState.PLAYING) {
-                                                         setTimeout(() => {
+                                                         playTimeout = setTimeout(() => {
                                                              if (card.matches(':hover') && trailerWrapper) {
                                                                  trailerWrapper.style.transition = 'opacity 0.5s ease';
                                                                  trailerWrapper.style.opacity = '1';
@@ -1562,7 +1563,7 @@
                                                                  spinner.classList.add('opacity-0');
                                                                  if (cardLogo) cardLogo.classList.add('opacity-0');
                                                              }
-                                                         }, 500);
+                                                         }, 3500);
                                                      } else {
                                                          if (trailerWrapper) {
                                                              trailerWrapper.style.opacity = '0.01';
@@ -1642,6 +1643,7 @@
 
                             card.addEventListener('mouseleave', () => {
                                 clearTimeout(hoverTimer);
+                                clearTimeout(playTimeout);
                                 spinner.classList.add('opacity-0');
                                 if (cardLogo) cardLogo.classList.remove('opacity-0');
                                 trailerWrapper.style.transition = 'none';
