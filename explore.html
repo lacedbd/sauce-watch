@@ -276,20 +276,23 @@
     /* Bookmark */
     .bookmark-btn {
       position: absolute;
-      top: 8px; left: 8px;
-      width: 28px; height: 28px;
-      background: rgba(0,0,0,0.5);
+      top: 7px; right: 7px;
+      width: 26px; height: 26px;
+      background: rgba(0,0,0,0.55);
       backdrop-filter: blur(8px);
-      border: none;
-      border-radius: 6px;
-      color: rgba(255,255,255,0.6);
-      font-size: 12px;
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 50%;
+      color: rgba(255,255,255,0.8);
+      font-size: 11px;
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      transition: background 0.15s, color 0.15s;
+      transition: background 0.15s, color 0.15s, transform 0.15s, border-color 0.15s;
+      z-index: 20;
     }
-    .bookmark-btn:hover { background: rgba(0,0,0,0.75); color: #fff; }
-    .bookmark-btn.saved { color: #facc15; }
+    .bookmark-btn:hover { background: rgba(220,38,38,0.8); border-color: rgba(220,38,38,0.6); color: #fff; transform: scale(1.12); }
+    .bookmark-btn.saved { background: rgba(220,38,38,0.85); border-color: rgba(220,38,38,0.6); color: #fff; }
+    .bookmark-btn.saved:hover { background: rgba(0,0,0,0.75); border-color: rgba(255,255,255,0.2); }
 
     /* ── Skeleton ── */
     .skeleton {
@@ -496,16 +499,6 @@
           <option value="7">7+ Good</option>
           <option value="6">6+ Fair</option>
           <option value="5">5+ Average</option>
-        </select>
-      </div>
-
-      <div class="filter-select">
-        <select id="filterAwards">
-          <option value="all">Awards</option>
-          <option value="3211">Oscar Winning</option>
-          <option value="4434">Emmy Winning</option>
-          <option value="305">Golden Globe</option>
-          <option value="818">Award Winning</option>
         </select>
       </div>
 
@@ -747,7 +740,7 @@
     });
 
     // Wire up all other filter changes (they will reset Category)
-    ['filterType','filterGenre','filterSort','filterYear','filterCountry','filterRating','filterAwards','filterPlatform'].forEach(id => {
+    ['filterType','filterGenre','filterSort','filterYear','filterCountry','filterRating','filterPlatform'].forEach(id => {
       document.getElementById(id).addEventListener('change', () => {
         currentList = null; // Clear list mode on manual filter change
         document.getElementById('filterCategory').value = 'all';
@@ -847,7 +840,6 @@
       if (p.get('year')) document.getElementById('filterYear').value = p.get('year');
       if (p.get('country')) document.getElementById('filterCountry').value = p.get('country');
       if (p.get('rating')) document.getElementById('filterRating').value = p.get('rating');
-      if (p.get('awards')) document.getElementById('filterAwards').value = p.get('awards');
       if (p.get('platform')) document.getElementById('filterPlatform').value = p.get('platform');
     }
   }
@@ -860,7 +852,6 @@
     const year = document.getElementById('filterYear').value;
     const country = document.getElementById('filterCountry').value;
     const rating = document.getElementById('filterRating').value;
-    const awards = document.getElementById('filterAwards').value;
     const platform = document.getElementById('filterPlatform').value;
 
     const params = new URLSearchParams();
@@ -874,7 +865,6 @@
       if (year !== 'all') params.set('year', year);
       if (country !== 'all') params.set('country', country);
       if (rating !== 'all') params.set('rating', rating);
-      if (awards !== 'all') params.set('awards', awards);
       if (platform !== 'all') params.set('platform', platform);
     }
 
@@ -892,7 +882,6 @@
     const year = document.getElementById('filterYear').value;
     const country = document.getElementById('filterCountry').value;
     const rating = document.getElementById('filterRating').value;
-    const awards = document.getElementById('filterAwards').value;
     const platform = document.getElementById('filterPlatform').value;
 
     if (currentPage === 1) {
@@ -996,7 +985,6 @@
           }
           if (country !== 'all') url += `&with_origin_country=${country}`;
           if (rating !== 'all') url += `&vote_average.gte=${rating}&vote_count.gte=100`;
-          if (awards !== 'all') url += `&with_keywords=${awards}`;
           if (platform !== 'all') url += `&with_watch_providers=${platform}&watch_region=US`;
 
           const r = await fetchTMDB(url);
@@ -1056,8 +1044,8 @@
     link.className = 'poster-card';
     link.innerHTML = `
       <img src="${W500}${item.poster_path}" alt="${title}" loading="lazy">
-      <button class="bookmark-btn ${isSaved ? 'saved' : ''}" title="Bookmark">
-        <i class="${isSaved ? 'fas' : 'far'} fa-bookmark"></i>
+      <button class="bookmark-btn ${isSaved ? 'saved' : ''}" title="Add to Wishlist">
+        ${isSaved ? '<i class="fas fa-check" style="font-size:10px;"></i>' : '<i class="fas fa-plus" style="font-size:11px;"></i>'}
       </button>
       ${rating ? `
         <div class="rating-badge">
@@ -1094,7 +1082,7 @@
     if (idx > -1) {
       bookmarks.splice(idx, 1);
       btn.classList.remove('saved');
-      btn.querySelector('i').className = 'far fa-bookmark';
+      btn.innerHTML = '<i class="fas fa-plus" style="font-size:11px;"></i>';
     } else {
       bookmarks.push({
         id: id,
@@ -1104,7 +1092,7 @@
         vote_average: vote_average
       });
       btn.classList.add('saved');
-      btn.querySelector('i').className = 'fas fa-bookmark';
+      btn.innerHTML = '<i class="fas fa-check" style="font-size:10px;"></i>';
     }
     localStorage.setItem('sw_mylist', JSON.stringify(bookmarks));
   }
@@ -1129,7 +1117,6 @@
     document.getElementById('filterYear').value = 'all';
     document.getElementById('filterCountry').value = 'all';
     document.getElementById('filterRating').value = 'all';
-    document.getElementById('filterAwards').value = 'all';
     document.getElementById('filterPlatform').value = 'all';
     window.history.replaceState({}, document.title, window.location.pathname);
     currentPage = 1;
@@ -1145,7 +1132,6 @@
       { id: 'filterYear', defaultVal: 'all' },
       { id: 'filterCountry', defaultVal: 'all' },
       { id: 'filterRating', defaultVal: 'all' },
-      { id: 'filterAwards', defaultVal: 'all' },
       { id: 'filterPlatform', defaultVal: 'all' }
     ];
 

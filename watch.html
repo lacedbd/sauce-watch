@@ -107,6 +107,27 @@
             max-width: 85vw;
             max-height: 110px;
         }
+        /* ── Wishlist Button ── */
+        .wishlist-btn {
+            position: absolute;
+            top: 7px; right: 7px;
+            width: 26px; height: 26px;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 50%;
+            color: rgba(255,255,255,0.8);
+            font-size: 11px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s, color 0.15s, transform 0.15s, border-color 0.15s;
+            z-index: 25;
+        }
+        .wishlist-btn:hover { background: rgba(220,38,38,0.8); border-color: rgba(220,38,38,0.6); color: #fff; transform: scale(1.12); }
+        .wishlist-btn.saved { background: rgba(220,38,38,0.85); border-color: rgba(220,38,38,0.6); color: #fff; }
+        .wishlist-btn.saved:hover { background: rgba(0,0,0,0.75); border-color: rgba(255,255,255,0.2); }
+
         @media (min-width: 768px) {
             #heroTitleLogo {
                 max-width: 480px;
@@ -1487,6 +1508,7 @@
                         const typeLabel = type === 'tv' ? 'TV Show' : 'Movie';
 
                         const rtScore = Math.round(item.vote_average * 10);
+                        const wlSaved = JSON.parse(localStorage.getItem('sw_mylist') || '[]').some(b => b.id == item.id);
 
                         card.innerHTML = `
                             <div class="relative w-full aspect-[2/3] rounded-xl overflow-hidden bg-zinc-900 border border-white/5 group-hover:border-white/20 transition-all duration-300 shadow-lg group-hover:shadow-2xl group-hover:shadow-black/60">
@@ -1498,6 +1520,9 @@
                                 <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-md rounded px-1.5 py-0.5 text-[10px] font-bold text-white flex items-center gap-1 opacity-0 transition-opacity z-30 cursor-pointer hover:bg-black/80 hover:scale-110 active:scale-95 transition-all" id="volIcon-${item.id}">
                                     <i class="fas fa-volume-up text-xs text-red-500"></i>
                                 </div>
+                                <button class="wishlist-btn${wlSaved ? ' saved' : ''}" id="wl-${item.id}" title="Add to Wishlist">
+                                    ${wlSaved ? '<i class="fas fa-check" style="font-size:10px;"></i>' : '<i class="fas fa-plus" style="font-size:11px;"></i>'}
+                                </button>
                                 <!-- Native HTML5 hover trailer -->
                                 <div id="trailer-wrapper-${item.id}" class="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-0 transition-opacity duration-300" style="opacity: 0.01;">
                                     <video id="trailer-player-${item.id}" class="w-full h-full object-cover pointer-events-none" loop playsinline></video>
@@ -1515,6 +1540,27 @@
                                 </div>
                             </div>
                         `;
+
+                        // Wishlist button handler
+                        const wlBtn = card.querySelector(`#wl-${item.id}`);
+                        if (wlBtn) {
+                            wlBtn.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const list = JSON.parse(localStorage.getItem('sw_mylist') || '[]');
+                                const idx = list.findIndex(b => b.id == item.id);
+                                if (idx > -1) {
+                                    list.splice(idx, 1);
+                                    wlBtn.classList.remove('saved');
+                                    wlBtn.innerHTML = '<i class="fas fa-plus" style="font-size:11px;"></i>';
+                                } else {
+                                    list.push({ id: item.id, type, title, poster_path: item.poster_path, vote_average: item.vote_average || 0 });
+                                    wlBtn.classList.add('saved');
+                                    wlBtn.innerHTML = '<i class="fas fa-check" style="font-size:10px;"></i>';
+                                }
+                                localStorage.setItem('sw_mylist', JSON.stringify(list));
+                            });
+                        }
 
                         // Fetch Logo dynamically
                         fetchTMDB(`${TMDB_BASE}/${type}/${item.id}/images?api_key=${TMDB_API_KEY}`)
