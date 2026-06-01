@@ -708,14 +708,14 @@
         <a href="#" id="navTrending" class="hover:text-white transition-colors" onclick="navSelect(event,'trending')">Trending</a>
         <a href="explore.html" id="navGenres" class="hover:text-white transition-colors">Explore</a>
         <!-- Category Dropdown -->
-        <div class="relative group ml-2">
-          <button id="categoryDropdownBtn" class="flex items-center gap-2 text-white bg-white/5 border border-white/10 px-3 py-1.5 rounded-full hover:bg-white/10 transition-colors">
+        <div class="relative ml-2" id="categoryDropdownContainer">
+          <button id="categoryDropdownBtn" onclick="toggleDropdown(event)" class="flex items-center gap-2 text-white bg-white/5 border border-white/10 px-3 py-1.5 rounded-full hover:bg-white/10 transition-colors">
             <i class="fas fa-magic text-xs text-rose-500"></i>
             <span id="currentCategoryLabel">Category</span>
-            <i class="fas fa-chevron-down text-[10px] ml-1 opacity-50 group-hover:rotate-180 transition-transform"></i>
+            <i class="fas fa-chevron-down text-[10px] ml-1 opacity-50 transition-transform" id="dropdownArrow"></i>
           </button>
           <!-- Dropdown Menu -->
-          <div class="absolute top-full right-0 mt-2 w-40 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[400] overflow-hidden flex flex-col p-1">
+          <div id="categoryDropdownMenu" class="absolute top-full right-0 mt-2 w-40 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl opacity-0 invisible transition-all duration-200 z-[400] overflow-hidden flex flex-col p-1">
             <button onclick="switchCategory('Hollywood')" class="text-left px-3 py-2 text-zinc-300 hover:text-white hover:bg-white/10 rounded-lg text-sm transition-colors">Hollywood</button>
             <button onclick="switchCategory('Bollywood')" class="text-left px-3 py-2 text-zinc-300 hover:text-white hover:bg-white/10 rounded-lg text-sm transition-colors">Bollywood</button>
             <button onclick="switchCategory('Chinese')" class="text-left px-3 py-2 text-zinc-300 hover:text-white hover:bg-white/10 rounded-lg text-sm transition-colors">Chinese</button>
@@ -2359,9 +2359,12 @@
 
     // Fetch movies & shows by provider
     try {
+      const pref = localStorage.getItem('sauce_preference');
+      const filter = getCategoryFilter(pref);
+      
       const [mRes, tRes] = await Promise.all([
-        fetchTMDB(`${T}/discover/movie?api_key=${API}&with_watch_providers=${providerId}&watch_region=US&sort_by=popularity.desc`),
-        fetchTMDB(`${T}/discover/tv?api_key=${API}&with_watch_providers=${providerId}&watch_region=US&sort_by=popularity.desc`)
+        fetchTMDB(`${T}/discover/movie?api_key=${API}&with_watch_providers=${providerId}&watch_region=US&sort_by=popularity.desc${filter}`),
+        fetchTMDB(`${T}/discover/tv?api_key=${API}&with_watch_providers=${providerId}&watch_region=US&sort_by=popularity.desc${filter}`)
       ]);
       const mData = await mRes.json();
       const tData = await tRes.json();
@@ -2514,11 +2517,29 @@
     fetchAll();
   };
 
-  window.triggerSurpriseMe = function() {
-    window.loadPersonalizedFeed('Surprise');
+  window.toggleDropdown = function(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('categoryDropdownMenu');
+    const arrow = document.getElementById('dropdownArrow');
+    if (menu && arrow) {
+      menu.classList.toggle('opacity-0');
+      menu.classList.toggle('invisible');
+      arrow.classList.toggle('rotate-180');
+    }
   };
 
+  document.addEventListener('click', function(e) {
+    const container = document.getElementById('categoryDropdownContainer');
+    const menu = document.getElementById('categoryDropdownMenu');
+    const arrow = document.getElementById('dropdownArrow');
+    if (container && !container.contains(e.target) && menu && !menu.classList.contains('invisible')) {
+      menu.classList.add('opacity-0', 'invisible');
+      arrow.classList.remove('rotate-180');
+    }
+  });
+
   window.switchCategory = function(newChoice) {
+    window.toggleDropdown();
     localStorage.setItem('sauce_preference', newChoice);
     
     // Update dropdown label
