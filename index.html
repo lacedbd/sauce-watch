@@ -701,7 +701,7 @@
     <!-- Left: Logo + Nav -->
     <div class="flex items-center gap-8">
       <a href="index.html" class="flex items-center">
-        <img src="logo.jpg" alt="sauce.watch logo" class="w-12 h-12 rounded-xl object-cover hover:scale-105 transition-transform duration-200 shadow-md">
+        <img src="logo.jpg" width="48" height="48" style="width: 48px; height: 48px; max-width: 100%; object-fit: cover;" alt="sauce.watch logo" class="w-12 h-12 rounded-xl hover:scale-105 transition-transform duration-200 shadow-md">
       </a>
       <div class="hidden md:flex items-center gap-6 text-sm font-medium text-zinc-400">
         <a href="index.html" id="navHome" class="text-white font-semibold transition-colors">Home</a>
@@ -1115,7 +1115,7 @@
     <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
       <div>
         <a href="index.html" class="flex items-center mb-4">
-          <img src="logo.jpg" alt="sauce.watch logo" class="w-11 h-11 rounded-lg object-cover hover:scale-105 transition-transform duration-200">
+          <img src="logo.jpg" width="44" height="44" style="width: 44px; height: 44px; max-width: 100%; object-fit: cover;" alt="sauce.watch logo" class="w-11 h-11 rounded-lg hover:scale-105 transition-transform duration-200">
         </a>
         <p class="text-xs leading-relaxed text-zinc-600">Your free streaming guide to every movie and TV show. Browse, discover and watch.</p>
       </div>
@@ -1831,8 +1831,8 @@
     try {
       const imgRes = await fetchTMDB(`${T}/movie/${movie.id}/images?api_key=${API}&include_image_language=en,null`);
       const imgData = await imgRes.json();
-      const logo = (imgData.logos || []).find(l => l.iso_639_1 === 'en') || imgData.logos?.[0];
-      if (logo?.file_path) logoUrl = `${W500}${logo.file_path}`;
+      const logo = (imgData.logos || []).find(l => l.iso_639_1 === 'en') || (imgData.logos && imgData.logos[0]);
+      if (logo && logo.file_path) logoUrl = `${W500}${logo.file_path}`;
     } catch(e) {}
 
     const logoEl  = document.getElementById('heroLogo');
@@ -1844,7 +1844,7 @@
       logoEl.classList.add('hidden'); titleEl.textContent = movie.title;
     }
 
-    document.getElementById('heroRating').textContent = movie.vote_average?.toFixed(1) || '0.0';
+    document.getElementById('heroRating').textContent = (movie.vote_average !== null && movie.vote_average !== undefined) ? movie.vote_average.toFixed(1) : '0.0';
     document.getElementById('heroRt').textContent     = Math.round((movie.vote_average || 0) * 10);
     document.getElementById('heroYear').textContent   = (movie.release_date || '').split('-')[0];
     document.getElementById('heroType').textContent   = movie.media_type === 'tv' ? 'TV Show' : 'Movie';

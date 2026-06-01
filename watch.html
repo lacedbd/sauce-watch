@@ -1105,13 +1105,14 @@
 
         function renderEpisodes() {
             const grid = document.getElementById('episodeGrid');
-            const searchQuery = document.getElementById('episodeSearchInput')?.value.toLowerCase().trim() || '';
+            const epInput = document.getElementById('episodeSearchInput');
+            const searchQuery = epInput && epInput.value ? epInput.value.toLowerCase().trim() : '';
             grid.innerHTML = '';
 
             // Filter episodes
             let filtered = allEpisodes.filter(ep => {
-                const titleMatch = ep.name?.toLowerCase().includes(searchQuery);
-                const overviewMatch = ep.overview?.toLowerCase().includes(searchQuery);
+                const titleMatch = ep.name ? ep.name.toLowerCase().includes(searchQuery) : false;
+                const overviewMatch = ep.overview ? ep.overview.toLowerCase().includes(searchQuery) : false;
                 const epNumMatch = String(ep.episode_number) === searchQuery;
                 return titleMatch || overviewMatch || epNumMatch;
             });
