@@ -137,7 +137,7 @@
   </div>
 
   <div id="player-view">
-    <a href="tv.html" class="back-btn" tabindex="1">Go Back to Search</a>
+    <a href="#" id="backBtn" class="back-btn" tabindex="1">Go Back to Search</a>
     <iframe id="videoPlayer" src="" allowfullscreen></iframe>
   </div>
 
@@ -146,135 +146,169 @@
     var BASE_URL = "https://api.themoviedb.org/3";
     var IMG_BASE = "https://image.tmdb.org/t/p/w500";
     
+    var searchView = document.getElementById('search-view');
+    var playerView = document.getElementById('player-view');
+    var videoPlayer = document.getElementById('videoPlayer');
+    var searchInput = document.getElementById('searchInput');
+    var resultsContainer = document.getElementById('results');
+    var messageContainer = document.getElementById('message');
+    var backBtn = document.getElementById('backBtn');
+    
+    var timeoutId = null;
+    var lastFocusedElement = null;
+
     function getQueryParam(name) {
       var match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
       return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
     }
 
-    var idParam = getQueryParam('id');
-    var typeParam = getQueryParam('type') || 'movie';
-
-    if (idParam) {
-      // Show Player
-      document.getElementById('search-view').className += ' hidden';
-      document.getElementById('player-view').style.display = 'block';
-      
-      // We start with episode 1 for TV shows on the basic tv.html route
-      var src = typeParam === 'tv' 
-        ? 'https://player.videasy.net/tv/' + idParam + '/1/1'
-        : 'https://player.videasy.net/movie/' + idParam;
-        
-      document.getElementById('videoPlayer').src = src;
-      document.querySelector('.back-btn').focus();
-    } else {
-      // Show Search
-      var searchInput = document.getElementById('searchInput');
-      var resultsContainer = document.getElementById('results');
-      var messageContainer = document.getElementById('message');
-      var timeoutId = null;
-
-      function ajaxGet(url, callback) {
-        var xhr = new XMLHttpRequest();
-        xhr.onreadystatechange = function() {
-          if (xhr.readyState === 4) {
-            if (xhr.status === 200) {
-              try {
-                var data = JSON.parse(xhr.responseText);
-                callback(null, data);
-              } catch (e) {
-                callback(e, null);
-              }
-            } else {
-              callback(new Error("Request failed with status " + xhr.status), null);
+    function ajaxGet(url, callback) {
+      var xhr = new XMLHttpRequest();
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            try {
+              var data = JSON.parse(xhr.responseText);
+              callback(null, data);
+            } catch (e) {
+              callback(e, null);
             }
-          }
-        };
-        xhr.open("GET", url, true);
-        xhr.send();
-      }
-
-      function renderResults(results) {
-        resultsContainer.innerHTML = '';
-        if (!results || results.length === 0) {
-          messageContainer.innerHTML = 'No results found.';
-          messageContainer.style.display = 'block';
-          return;
-        }
-        
-        messageContainer.style.display = 'none';
-
-        var tabIndex = 2;
-        for (var i = 0; i < results.length; i++) {
-          var item = results[i];
-          if (item.media_type === 'person') continue;
-          
-          var title = item.title || item.name || "Unknown";
-          var imageUrl = item.poster_path ? (IMG_BASE + item.poster_path) : 'logo.jpg';
-          var type = item.media_type || (item.title ? 'movie' : 'tv');
-          
-          var link = document.createElement('a');
-          link.className = 'card';
-          link.href = 'tv.html?id=' + item.id + '&type=' + type;
-          link.tabIndex = tabIndex++;
-
-          var img = document.createElement('img');
-          img.src = imageUrl;
-          img.alt = title;
-
-          var titleDiv = document.createElement('div');
-          titleDiv.className = 'title';
-          titleDiv.innerHTML = title;
-
-          link.appendChild(img);
-          link.appendChild(titleDiv);
-          resultsContainer.appendChild(link);
-        }
-      }
-
-      function performSearch(query) {
-        if (!query || query.replace(/^\s+|\s+$/g, '') === '') {
-          resultsContainer.innerHTML = '';
-          messageContainer.innerHTML = 'Type a movie or show to search...';
-          messageContainer.style.display = 'block';
-          return;
-        }
-
-        messageContainer.innerHTML = 'Searching...';
-        messageContainer.style.display = 'block';
-        resultsContainer.innerHTML = '';
-
-        // Use Vercel serverless function proxy instead of direct TMDB to bypass SSL/TLS & CORS issues on older TVs
-        var url = "/api/tmdb?path=search/multi&query=" + encodeURIComponent(query);
-        ajaxGet(url, function(err, data) {
-          if (err) {
-            messageContainer.innerHTML = 'Error loading results: ' + (err.message || 'connection failed');
-            messageContainer.style.display = 'block';
           } else {
-            renderResults(data.results);
+            callback(new Error("Request failed with status " + xhr.status), null);
           }
-        });
-      }
-
-      function handleInputChange() {
-        var query = searchInput.value;
-        if (timeoutId) {
-          clearTimeout(timeoutId);
         }
-        timeoutId = setTimeout(function() {
-          performSearch(query);
-        }, 600);
+      };
+      xhr.open("GET", url, true);
+      xhr.send();
+    }
+
+    function showPlayer(id, type) {
+      lastFocusedElement = document.activeElement;
+      searchView.style.display = 'none';
+      playerView.style.display = 'block';
+      
+      var src = type === 'tv' 
+        ? 'https://player.videasy.net/tv/' + id + '/1/1'
+        : 'https://player.videasy.net/movie/' + id;
+        
+      videoPlayer.src = src;
+      backBtn.focus();
+    }
+
+    function closePlayer() {
+      videoPlayer.src = '';
+      playerView.style.display = 'none';
+      searchView.style.display = 'block';
+      if (lastFocusedElement) {
+        try {
+          lastFocusedElement.focus();
+        } catch (e) {
+          searchInput.focus();
+        }
+      } else {
+        searchInput.focus();
+      }
+    }
+
+    backBtn.onclick = function(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      closePlayer();
+      return false;
+    };
+
+    function renderResults(results) {
+      resultsContainer.innerHTML = '';
+      if (!results || results.length === 0) {
+        messageContainer.innerHTML = 'No results found.';
+        messageContainer.style.display = 'block';
+        return;
+      }
+      
+      messageContainer.style.display = 'none';
+
+      var tabIndex = 2;
+      for (var i = 0; i < results.length; i++) {
+        var item = results[i];
+        if (item.media_type === 'person') continue;
+        
+        var title = item.title || item.name || "Unknown";
+        var imageUrl = item.poster_path ? (IMG_BASE + item.poster_path) : 'logo.jpg';
+        var type = item.media_type || (item.title ? 'movie' : 'tv');
+        
+        var link = document.createElement('a');
+        link.className = 'card';
+        link.href = '#';
+        link.tabIndex = tabIndex++;
+
+        (function(id, t) {
+          link.onclick = function(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            showPlayer(id, t);
+            return false;
+          };
+        })(item.id, type);
+
+        var img = document.createElement('img');
+        img.src = imageUrl;
+        img.alt = title;
+
+        var titleDiv = document.createElement('div');
+        titleDiv.className = 'title';
+        titleDiv.innerHTML = title;
+
+        link.appendChild(img);
+        link.appendChild(titleDiv);
+        resultsContainer.appendChild(link);
+      }
+    }
+
+    function performSearch(query) {
+      if (!query || query.replace(/^\s+|\s+$/g, '') === '') {
+        resultsContainer.innerHTML = '';
+        messageContainer.innerHTML = 'Type a movie or show to search...';
+        messageContainer.style.display = 'block';
+        return;
       }
 
-      // Bind to all standard input events since virtual keyboards on TV browsers trigger varied events
-      searchInput.oninput = handleInputChange;
-      searchInput.onkeyup = handleInputChange;
-      searchInput.onchange = handleInputChange;
-      searchInput.onpropertychange = handleInputChange;
+      messageContainer.innerHTML = 'Searching...';
+      messageContainer.style.display = 'block';
+      resultsContainer.innerHTML = '';
 
-      window.onload = function() {
-        searchInput.focus();
-      };
+      var url = "/api/tmdb?path=search/multi&query=" + encodeURIComponent(query);
+      ajaxGet(url, function(err, data) {
+        if (err) {
+          messageContainer.innerHTML = 'Error loading results: ' + (err.message || 'connection failed');
+          messageContainer.style.display = 'block';
+        } else {
+          renderResults(data.results);
+        }
+      });
     }
+
+    function handleInputChange() {
+      var query = searchInput.value;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      timeoutId = setTimeout(function() {
+        performSearch(query);
+      }, 600);
+    }
+
+    searchInput.oninput = handleInputChange;
+    searchInput.onkeyup = handleInputChange;
+    searchInput.onchange = handleInputChange;
+    searchInput.onpropertychange = handleInputChange;
+
+    window.onload = function() {
+      searchInput.focus();
+
+      var idParam = getQueryParam('id');
+      var typeParam = getQueryParam('type') || 'movie';
+      if (idParam) {
+        showPlayer(idParam, typeParam);
+      }
+    };
   </script>
 </body>
 </html>
