@@ -2,7 +2,7 @@ export const config = {
   maxDuration: 15, // Max duration for hobby tier
 };
 
-import chromium from '@sparticuz/chromium';
+import chromium from '@sparticuz/chromium-min';
 import puppeteerCore from 'puppeteer-core';
 import { addExtra } from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
@@ -31,10 +31,10 @@ export default async function handler(req, res) {
 
   let browser;
   try {
-    const executablePath = await chromium.executablePath();
+    const executablePath = await chromium.executablePath('https://github.com/sparticuz/chromium/releases/download/v123.0.0/chromium-v123.0.0-pack.tar');
     
     browser = await puppeteer.launch({
-      args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox', '--disable-features=IsolateOrigins,site-per-process'],
+      args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox', '--disable-features=IsolateOrigins,site-per-process', '--hide-scrollbars', '--disable-web-security'],
       executablePath: executablePath,
       headless: chromium.headless,
       ignoreHTTPSErrors: true,
