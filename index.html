@@ -476,7 +476,9 @@
     .marquee-wrapper {
       position: relative;
       width: 100%;
-      overflow: hidden;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
       padding: 10px 0;
       mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
       -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
@@ -489,7 +491,7 @@
       display: flex;
       gap: 20px;
       width: max-content;
-      animation: marquee 30s linear infinite !important;
+      animation: marquee 30s linear infinite;
       will-change: transform;
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
@@ -498,7 +500,7 @@
     
     /* Pause moving on hover */
     .marquee-wrapper:hover .marquee-track {
-      animation-play-state: paused !important;
+      animation-play-state: paused;
     }
     
     @keyframes marquee {
@@ -2102,12 +2104,111 @@
   });
 
   function initPlatformMarquee() {
-    // Relying on native pure-CSS high performance GPU accelerated animation
-    // defined in .marquee-track. This avoids JS layout/offset lagging.
+    const wrapper = document.querySelector('.marquee-wrapper');
     const track = document.querySelector('.marquee-track');
-    if (track) {
-      track.style.cursor = 'pointer';
+    if (!wrapper || !track) return;
+
+    // Reset CSS animation to let JS control it smoothly and allow dragging
+    track.style.animation = 'none';
+    track.style.transform = 'none';
+    track.style.cursor = 'grab';
+
+    const cards = Array.from(track.querySelectorAll('.provider-card'));
+    const firstDuplicate = cards.find(c => c.classList.contains('duplicate'));
+    
+    let setWidth = 0;
+    if (firstDuplicate) {
+      setWidth = firstDuplicate.offsetLeft;
     }
+
+    // Recalculate setWidth on resize
+    window.addEventListener('resize', () => {
+      if (firstDuplicate) {
+        setWidth = firstDuplicate.offsetLeft;
+      }
+    });
+
+    let autoScrollSpeed = 0.8;
+    let isUserInteracting = false;
+    let autoScrollActive = true;
+    let interactionTimeout = null;
+
+    function step() {
+      // Dynamically resolve setWidth if it was 0 initially
+      if ((!setWidth || setWidth === 0) && firstDuplicate) {
+        setWidth = firstDuplicate.offsetLeft;
+      }
+
+      if (autoScrollActive && !isUserInteracting) {
+        wrapper.scrollLeft += autoScrollSpeed;
+      }
+      
+      // Infinite loop wrap check (only if setWidth has been successfully resolved)
+      if (setWidth > 0) {
+        if (wrapper.scrollLeft >= setWidth) {
+          wrapper.scrollLeft -= setWidth;
+        } else if (wrapper.scrollLeft <= 0) {
+          wrapper.scrollLeft += setWidth;
+        }
+      }
+
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+
+    // Helpers to handle user interaction pause and resume
+    function startInteraction() {
+      isUserInteracting = true;
+      if (interactionTimeout) clearTimeout(interactionTimeout);
+    }
+
+    function endInteraction() {
+      if (interactionTimeout) clearTimeout(interactionTimeout);
+      // Wait 1.5 seconds after touch/drag ends before resuming auto-scroll
+      interactionTimeout = setTimeout(() => {
+        isUserInteracting = false;
+      }, 1500);
+    }
+
+    wrapper.addEventListener('touchstart', startInteraction, { passive: true });
+    wrapper.addEventListener('touchend', endInteraction, { passive: true });
+    wrapper.addEventListener('touchcancel', endInteraction, { passive: true });
+
+    let isMouseDown = false;
+    let startX = 0;
+    let scrollLeftStart = 0;
+
+    wrapper.addEventListener('mousedown', (e) => {
+      isMouseDown = true;
+      startInteraction();
+      track.style.cursor = 'grabbing';
+      startX = e.pageX - wrapper.offsetLeft;
+      scrollLeftStart = wrapper.scrollLeft;
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isMouseDown) {
+        isMouseDown = false;
+        endInteraction();
+        track.style.cursor = 'grab';
+      }
+    });
+
+    wrapper.addEventListener('mousemove', (e) => {
+      if (!isMouseDown) return;
+      e.preventDefault();
+      const x = e.pageX - wrapper.offsetLeft;
+      const walk = (x - startX) * 1.5;
+      wrapper.scrollLeft = scrollLeftStart - walk;
+    });
+
+    wrapper.addEventListener('mouseenter', () => {
+      autoScrollActive = false;
+    });
+    wrapper.addEventListener('mouseleave', () => {
+      autoScrollActive = true;
+      if (!isMouseDown) isUserInteracting = false;
+    });
   }
 
   // ── Init ──────────────────────────────────────────────────────
