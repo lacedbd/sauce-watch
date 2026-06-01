@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="dist/output.css">
+  <link rel="stylesheet" href="dist/output.css?v=1.2">
   <style>
     * { font-family: 'Inter', sans-serif; }
     body { background-color: #09090b; color: #fafafa; }
@@ -179,7 +179,7 @@
     // ── fetchTMDB wrapper with Hybrid caching (Browser sessionStorage and Vercel CDN proxy) ──
     async function fetchTMDB(endpoint, queryParams = {}) {
       let path = endpoint;
-      let params = { ...queryParams };
+      let params = Object.assign({}, queryParams);
       
       if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
         try {
@@ -395,8 +395,7 @@
             `url('https://image.tmdb.org/t/p/original${withBackdrop.backdrop_path}')`;
         }
 
-        allFilms = raw.map(item => ({
-          ...item,
+        allFilms = raw.map(item => Object.assign({}, item, {
           _type:   item.media_type || (item.title ? 'movie' : 'tv'),
           title:   item.title || item.name,
           rating:  item.vote_average ? item.vote_average.toFixed(1) : '–',

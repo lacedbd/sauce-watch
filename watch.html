@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Watching - sauce.watch</title>
     <link rel="icon" href="logo.jpg" type="image/jpeg">
-    <link rel="stylesheet" href="dist/output.css">
+    <link rel="stylesheet" href="dist/output.css?v=1.2">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Preload YouTube IFrame API -->
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -442,7 +442,7 @@
         // ── fetchTMDB wrapper with Hybrid caching (Browser sessionStorage and Vercel CDN proxy) ──
         async function fetchTMDB(endpoint, queryParams = {}) {
             let path = endpoint;
-            let params = { ...queryParams };
+            let params = Object.assign({}, queryParams);
             
             if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
                 try {

@@ -7,7 +7,7 @@
   <link rel="icon" href="logo.jpg" type="image/jpeg">
   <meta name="description" content="sauce.watch — Your free streaming guide to every movie and TV show. Browse, search, and watch instantly.">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="dist/output.css">
+  <link rel="stylesheet" href="dist/output.css?v=1.2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -1197,7 +1197,7 @@
   // ── fetchTMDB wrapper with Hybrid caching (Browser sessionStorage and Vercel CDN proxy) ──
   async function fetchTMDB(endpoint, queryParams = {}) {
     let path = endpoint;
-    let params = { ...queryParams };
+    let params = Object.assign({}, queryParams);
     
     if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
       try {
@@ -1329,7 +1329,7 @@
       ]);
       const mData = await mRes.json();
       const tData = await tRes.json();
-      [...(mData.genres || []), ...(tData.genres || [])].forEach(g => genresMap[g.id] = g.name);
+      (mData.genres || []).concat(tData.genres || []).forEach(g => genresMap[g.id] = g.name);
       populateGenreFilter();
     } catch(e) {}
   }
@@ -1465,7 +1465,7 @@
     if (!container) return;
     container.innerHTML = '';
     
-    const copies = [...slideshowMovies, ...slideshowMovies, ...slideshowMovies];
+    const copies = slideshowMovies.concat(slideshowMovies, slideshowMovies);
     
     copies.forEach((m, i) => {
       const originalIndex = i % slideshowMovies.length;
@@ -1875,7 +1875,7 @@
 
       const fetched = await Promise.all(
         history.slice(0, 8).map(({ id, type, progress }) =>
-          fetchTMDB(`${T}/${type}/${id}?api_key=${API}`).then(r => r.json()).then(d => ({ ...d, _type: type, _progress: progress })).catch(() => null)
+          fetchTMDB(`${T}/${type}/${id}?api_key=${API}`).then(r => r.json()).then(d => Object.assign({}, d, { _type: type, _progress: progress })).catch(() => null)
         )
       );
 
@@ -1981,9 +1981,9 @@
         const mData = await mRes.json();
         const tData = await tRes.json();
 
-        const movies = (mData.results || []).map(i => ({ ...i, _type: 'movie', _sim: getSimilarity(q, i.title || '') }));
-        const shows  = (tData.results  || []).map(i => ({ ...i, _type: 'tv',    _sim: getSimilarity(q, i.name  || '') }));
-        const all = [...movies, ...shows].filter(i => i.poster_path).sort((a, b) => Math.abs(b._sim - a._sim) > 0.05 ? b._sim - a._sim : b.popularity - a.popularity);
+        const movies = (mData.results || []).map(i => Object.assign({}, i, { _type: 'movie', _sim: getSimilarity(q, i.title || '') }));
+        const shows  = (tData.results  || []).map(i => Object.assign({}, i, { _type: 'tv',    _sim: getSimilarity(q, i.name  || '') }));
+        const all = movies.concat(shows).filter(i => i.poster_path).sort((a, b) => Math.abs(b._sim - a._sim) > 0.05 ? b._sim - a._sim : b.popularity - a.popularity);
 
         suggestions.innerHTML = '';
         if (!all.length) { suggestions.innerHTML = '<p class="p-4 text-zinc-600 text-xs font-medium">No results found.</p>'; return; }
@@ -2046,10 +2046,10 @@
       const mData = await mRes.json();
       const tData = await tRes.json();
 
-      const movies = (mData.results || []).map(i => ({ ...i, _type: 'movie', _sim: getSimilarity(q, i.title || '') }));
-      const shows  = (tData.results  || []).map(i => ({ ...i, _type: 'tv',    _sim: getSimilarity(q, i.name  || '') }));
+      const movies = (mData.results || []).map(i => Object.assign({}, i, { _type: 'movie', _sim: getSimilarity(q, i.title || '') }));
+      const shows  = (tData.results  || []).map(i => Object.assign({}, i, { _type: 'tv',    _sim: getSimilarity(q, i.name  || '') }));
       const sort = (a, b) => Math.abs(b._sim - a._sim) > 0.05 ? b._sim - a._sim : b.popularity - a.popularity;
-      searchCache = [...movies, ...shows].filter(i => i.poster_path).sort(sort);
+      searchCache = movies.concat(shows).filter(i => i.poster_path).sort(sort);
       applyFilters();
     } catch(e) {}
   }
@@ -2060,7 +2060,7 @@
     const year   = document.getElementById('filterYear').value;
     const rating = document.getElementById('filterRating').value;
 
-    let filtered = [...searchCache];
+    let filtered = searchCache.slice();
     if (type !== 'all')   filtered = filtered.filter(i => i._type === type);
     if (genre !== 'all')  filtered = filtered.filter(i => (i.genre_ids||[]).includes(+genre));
     if (year !== 'all')   filtered = filtered.filter(i => ((i.release_date||i.first_air_date||'')).startsWith(year));
@@ -2299,9 +2299,9 @@
       const mData = await mRes.json();
       const tData = await tRes.json();
 
-      const movies = (mData.results || []).filter(m => m.poster_path).slice(0, 10).map(m => ({ ...m, _t: 'movie' }));
-      const shows  = (tData.results  || []).filter(t => t.poster_path).slice(0, 10).map(t => ({ ...t, _t: 'tv'    }));
-      const combined = [...movies, ...shows].sort((a,b) => b.popularity - a.popularity).slice(0, 16);
+      const movies = (mData.results || []).filter(m => m.poster_path).slice(0, 10).map(m => Object.assign({}, m, { _t: 'movie' }));
+      const shows  = (tData.results  || []).filter(t => t.poster_path).slice(0, 10).map(t => Object.assign({}, t, { _t: 'tv'    }));
+      const combined = movies.concat(shows).sort((a,b) => b.popularity - a.popularity).slice(0, 16);
 
       grid.innerHTML = '';
       combined.forEach(item => {
@@ -2365,9 +2365,9 @@
         const mData = await mRes.json();
         const tData = await tRes.json();
 
-        const movies = (mData.results || []).map(i => ({ ...i, _type: 'movie', _sim: getSimilarity(q, i.title || '') }));
-        const shows  = (tData.results  || []).map(i => ({ ...i, _type: 'tv',    _sim: getSimilarity(q, i.name  || '') }));
-        const all = [...movies, ...shows]
+        const movies = (mData.results || []).map(i => Object.assign({}, i, { _type: 'movie', _sim: getSimilarity(q, i.title || '') }));
+        const shows  = (tData.results  || []).map(i => Object.assign({}, i, { _type: 'tv',    _sim: getSimilarity(q, i.name  || '') }));
+        const all = movies.concat(shows)
           .filter(i => i.poster_path)
           .sort((a, b) => Math.abs(b._sim - a._sim) > 0.05 ? b._sim - a._sim : b.popularity - a.popularity)
           .slice(0, 10);

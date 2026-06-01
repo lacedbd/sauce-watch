@@ -7,7 +7,7 @@
   <link rel="icon" href="logo.jpg" type="image/jpeg">
   <meta name="description" content="Discover movies and TV shows with advanced filters on sauce.watch.">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="dist/output.css">
+  <link rel="stylesheet" href="dist/output.css?v=1.2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -577,7 +577,7 @@
   // ── fetchTMDB wrapper with Hybrid caching (Browser sessionStorage and Vercel CDN proxy) ──
   async function fetchTMDB(endpoint, queryParams = {}) {
     let path = endpoint;
-    let params = { ...queryParams };
+    let params = Object.assign({}, queryParams);
     
     if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
       try {
@@ -775,7 +775,7 @@
       const mData = await mRes.json();
       const tData = await tRes.json();
       const merged = {};
-      [...(mData.genres || []), ...(tData.genres || [])].forEach(g => merged[g.id] = g.name);
+      (mData.genres || []).concat(tData.genres || []).forEach(g => merged[g.id] = g.name);
 
       const sel = document.getElementById('filterGenre');
       Object.entries(merged).sort((a,b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
@@ -925,7 +925,7 @@
             history.map(({ id, type, progress }) =>
               fetchTMDB(`${T}/${type}/${id}?api_key=${API}`)
                 .then(r => r.json())
-                .then(d => ({ ...d, _type: type, _progress: progress }))
+                .then(d => Object.assign({}, d, { _type: type, _progress: progress }))
                 .catch(() => null)
             )
           );
@@ -934,7 +934,7 @@
           maxTotal = allResults.length;
         } else if (currentList === 'mylist') {
           const list = JSON.parse(localStorage.getItem('sw_mylist') || '[]');
-          allResults = list.map(item => ({ ...item, _type: item.type || 'movie' }));
+          allResults = list.map(item => Object.assign({}, item, { _type: item.type || 'movie' }));
           maxPages = 1;
           maxTotal = allResults.length;
         }
@@ -942,7 +942,7 @@
         if (url) {
           const r = await fetchTMDB(url);
           const d = await r.json();
-          allResults = (d.results || []).map(item => ({...item, _type: listType || item.media_type || 'movie'}));
+          allResults = (d.results || []).map(item => Object.assign({}, item, { _type: listType || item.media_type || 'movie' }));
           maxPages = d.total_pages || 1;
           maxTotal = d.total_results || 0;
         }
@@ -952,7 +952,7 @@
         for (const t of types) {
           const r = await fetchTMDB(`${T}/search/${t}?api_key=${API}&query=${encodeURIComponent(query)}&page=${currentPage}`);
           const d = await r.json();
-          allResults.push(...(d.results || []).map(item => ({...item, _type: t})));
+          allResults.push.apply(allResults, (d.results || []).map(item => Object.assign({}, item, { _type: t })));
           maxPages = Math.max(maxPages, d.total_pages || 1);
           maxTotal += (d.total_results || 0);
         }
@@ -985,7 +985,7 @@
 
           const r = await fetchTMDB(url);
           const d = await r.json();
-          allResults.push(...(d.results || []).map(item => ({...item, _type: t})));
+          allResults.push.apply(allResults, (d.results || []).map(item => Object.assign({}, item, { _type: t })));
           maxPages = Math.max(maxPages, d.total_pages || 1);
           maxTotal += (d.total_results || 0);
         }
