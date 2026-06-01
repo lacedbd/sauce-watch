@@ -144,7 +144,8 @@
   <div id="player-view">
     <div style="padding: 10px; background: #111;">
       <a href="#" id="backBtn" class="action-btn" tabindex="1">Go Back</a>
-      <a href="#" id="server-videasy" class="server-btn action-btn server-active" tabindex="1" onclick="return changeServer('videasy');">Videasy</a>
+      <a href="#" id="server-vidsrc" class="server-btn action-btn server-active" tabindex="1" onclick="return changeServer('vidsrc');">Neon</a>
+      <a href="#" id="server-videasy" class="server-btn action-btn" tabindex="1" onclick="return changeServer('videasy');">Videasy</a>
       <a href="#" id="server-vidlink" class="server-btn action-btn" tabindex="1" onclick="return changeServer('vidlink');">Yoru</a>
       <a href="#" id="server-embedsu" class="server-btn action-btn" tabindex="1" onclick="return changeServer('embedsu');">Cypher</a>
     </div>
@@ -168,7 +169,7 @@
     var lastFocusedElement = null;
     var currentMediaId = null;
     var currentMediaType = null;
-    var currentServer = 'videasy';
+    var currentServer = 'vidsrc';
 
     function getQueryParam(name) {
       var match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
@@ -200,6 +201,8 @@
         return type === 'tv' ? 'https://vidlink.pro/tv/' + id + '/1/1' : 'https://vidlink.pro/movie/' + id;
       } else if (server === 'embedsu') {
         return type === 'tv' ? 'https://embed.su/embed/tv/' + id + '/1/1' : 'https://embed.su/embed/movie/' + id;
+      } else if (server === 'vidsrc') {
+        return type === 'tv' ? 'https://vidsrc.to/embed/tv/' + id + '/1/1' : 'https://vidsrc.to/embed/movie/' + id;
       }
       // default videasy
       return type === 'tv' ? 'https://player.videasy.net/tv/' + id + '/1/1' : 'https://player.videasy.net/movie/' + id;
@@ -207,6 +210,7 @@
 
     function changeServer(serverName) {
       currentServer = serverName;
+      document.getElementById('server-vidsrc').className = 'server-btn action-btn';
       document.getElementById('server-videasy').className = 'server-btn action-btn';
       document.getElementById('server-vidlink').className = 'server-btn action-btn';
       document.getElementById('server-embedsu').className = 'server-btn action-btn';
