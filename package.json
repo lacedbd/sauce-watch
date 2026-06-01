@@ -9,7 +9,9 @@
   "dependencies": {
     "@distube/ytdl-core": "^4.14.4",
     "@sparticuz/chromium": "^149.0.0",
-    "puppeteer-core": "^25.1.0"
+    "puppeteer-core": "^25.1.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.1"
