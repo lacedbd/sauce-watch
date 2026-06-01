@@ -185,7 +185,7 @@
                 callback(e, null);
               }
             } else {
-              callback(new Error("Request failed"), null);
+              callback(new Error("Request failed with status " + xhr.status), null);
             }
           }
         };
@@ -234,7 +234,7 @@
       function performSearch(query) {
         if (!query || query.replace(/^\s+|\s+$/g, '') === '') {
           resultsContainer.innerHTML = '';
-          messageContainer.innerHTML = 'Type to search...';
+          messageContainer.innerHTML = 'Type a movie or show to search...';
           messageContainer.style.display = 'block';
           return;
         }
@@ -243,10 +243,11 @@
         messageContainer.style.display = 'block';
         resultsContainer.innerHTML = '';
 
-        var url = BASE_URL + "/search/multi?api_key=" + API_KEY + "&query=" + encodeURIComponent(query);
+        // Use Vercel serverless function proxy instead of direct TMDB to bypass SSL/TLS & CORS issues on older TVs
+        var url = "/api/tmdb?path=search/multi&query=" + encodeURIComponent(query);
         ajaxGet(url, function(err, data) {
           if (err) {
-            messageContainer.innerHTML = 'Error loading results.';
+            messageContainer.innerHTML = 'Error loading results: ' + (err.message || 'connection failed');
             messageContainer.style.display = 'block';
           } else {
             renderResults(data.results);
@@ -254,15 +255,21 @@
         });
       }
 
-      searchInput.onkeyup = function(e) {
+      function handleInputChange() {
         var query = searchInput.value;
         if (timeoutId) {
           clearTimeout(timeoutId);
         }
         timeoutId = setTimeout(function() {
           performSearch(query);
-        }, 800);
-      };
+        }, 600);
+      }
+
+      // Bind to all standard input events since virtual keyboards on TV browsers trigger varied events
+      searchInput.oninput = handleInputChange;
+      searchInput.onkeyup = handleInputChange;
+      searchInput.onchange = handleInputChange;
+      searchInput.onpropertychange = handleInputChange;
 
       window.onload = function() {
         searchInput.focus();
