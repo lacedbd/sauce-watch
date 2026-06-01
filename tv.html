@@ -94,43 +94,36 @@
     /* Player */
     #player-view {
       display: none;
-      position: absolute;
-      top: 0;
-      left: 0;
       width: 100%;
       height: 100%;
-      background-color: #000;
-      z-index: 9999;
       text-align: left;
     }
-    .back-btn {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      z-index: 10000;
+    .action-btn {
       display: inline-block;
-      padding: 12px 24px;
-      font-size: 20px;
-      background-color: #222;
+      padding: 15px 30px;
+      font-size: 24px;
+      background-color: #333;
       color: #fff;
       text-decoration: none;
       border: 4px solid transparent;
       border-radius: 8px;
+      margin: 10px;
       outline: none;
     }
-    .back-btn:focus, .back-btn:hover {
+    .action-btn:focus, .action-btn:hover {
       border-color: #FFFF00;
-      background-color: #444;
+      background-color: #555;
+    }
+    .server-active {
+      background-color: #005500;
+      border-color: #00FF00;
     }
     iframe {
-      position: absolute;
-      top: 0;
-      left: 0;
       width: 100%;
-      height: 100%;
+      height: 85%;
+      min-height: 600px;
       border: none;
       background-color: #000;
-      z-index: 9998;
     }
     
     /* Utility */
@@ -149,8 +142,13 @@
   </div>
 
   <div id="player-view">
-    <a href="#" id="backBtn" class="back-btn" tabindex="1">Go Back to Search</a>
-    <iframe id="videoPlayer" src="" allowfullscreen></iframe>
+    <div style="padding: 10px; background: #111;">
+      <a href="#" id="backBtn" class="action-btn" tabindex="1">Go Back</a>
+      <a href="#" id="server-videasy" class="server-btn action-btn server-active" tabindex="1" onclick="return changeServer('videasy');">Videasy</a>
+      <a href="#" id="server-vidlink" class="server-btn action-btn" tabindex="1" onclick="return changeServer('vidlink');">Yoru</a>
+      <a href="#" id="server-embedsu" class="server-btn action-btn" tabindex="1" onclick="return changeServer('embedsu');">Cypher</a>
+    </div>
+    <iframe id="videoPlayer" src="" frameborder="0" allowfullscreen></iframe>
   </div>
 
   <script>
@@ -168,6 +166,9 @@
     
     var timeoutId = null;
     var lastFocusedElement = null;
+    var currentMediaId = null;
+    var currentMediaType = null;
+    var currentServer = 'videasy';
 
     function getQueryParam(name) {
       var match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
@@ -194,16 +195,37 @@
       xhr.send();
     }
 
+    function getPlayerUrl(server, id, type) {
+      if (server === 'vidlink') {
+        return type === 'tv' ? 'https://vidlink.pro/tv/' + id + '/1/1' : 'https://vidlink.pro/movie/' + id;
+      } else if (server === 'embedsu') {
+        return type === 'tv' ? 'https://embed.su/embed/tv/' + id + '/1/1' : 'https://embed.su/embed/movie/' + id;
+      }
+      // default videasy
+      return type === 'tv' ? 'https://player.videasy.net/tv/' + id + '/1/1' : 'https://player.videasy.net/movie/' + id;
+    }
+
+    function changeServer(serverName) {
+      currentServer = serverName;
+      document.getElementById('server-videasy').className = 'server-btn action-btn';
+      document.getElementById('server-vidlink').className = 'server-btn action-btn';
+      document.getElementById('server-embedsu').className = 'server-btn action-btn';
+      document.getElementById('server-' + serverName).className = 'server-btn action-btn server-active';
+      
+      if (currentMediaId) {
+        videoPlayer.src = getPlayerUrl(currentServer, currentMediaId, currentMediaType);
+      }
+      return false;
+    }
+
     function showPlayer(id, type) {
       lastFocusedElement = document.activeElement;
+      currentMediaId = id;
+      currentMediaType = type;
       searchView.style.display = 'none';
       playerView.style.display = 'block';
       
-      var src = type === 'tv' 
-        ? 'https://player.videasy.net/tv/' + id + '/1/1'
-        : 'https://player.videasy.net/movie/' + id;
-        
-      videoPlayer.src = src;
+      videoPlayer.src = getPlayerUrl(currentServer, id, type);
       backBtn.focus();
     }
 
