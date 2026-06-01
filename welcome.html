@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to sauce.watch</title>
+  <link rel="icon" href="logo.jpg" type="image/jpeg">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+  <!-- Tailwind via CDN just for this page for layout speed -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+    }
+    .greeting-btn {
+      background: #000;
+      color: #fff;
+      border: 2px solid #fff;
+      padding: 16px 24px;
+      font-size: 1.125rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .greeting-btn:hover {
+      background: #fff;
+      color: #000;
+    }
+    .surprise-btn {
+      border-style: dashed;
+      background: transparent;
+    }
+  </style>
+</head>
+<body class="flex flex-col justify-center items-center h-screen w-screen m-0">
+
+  <h1 class="text-4xl md:text-6xl font-black mb-12 text-center tracking-tight px-4">What are we in the mood for today?</h1>
+  
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 w-full max-w-4xl px-4">
+    <button class="greeting-btn" onclick="handleGreetingChoice('Hollywood')">Hollywood</button>
+    <button class="greeting-btn" onclick="handleGreetingChoice('Bollywood')">Bollywood</button>
+    <button class="greeting-btn" onclick="handleGreetingChoice('Chinese')">Chinese</button>
+    <button class="greeting-btn" onclick="handleGreetingChoice('Korean')">Korean</button>
+    <button class="greeting-btn" onclick="handleGreetingChoice('Thai')">Thai</button>
+    <button class="greeting-btn" onclick="handleGreetingChoice('Bisexual')">Bisexual</button>
+    <button class="greeting-btn" onclick="handleGreetingChoice('Anime')">Anime</button>
+  </div>
+  
+  <button class="greeting-btn surprise-btn" onclick="handleGreetingChoice('Surprise')">Surprise Me</button>
+
+  <script>
+    // If they already made a choice, don't let them stay on this page
+    if (localStorage.getItem('sauce_preference')) {
+      window.location.href = 'index.html';
+    }
+
+    function handleGreetingChoice(choice) {
+      if (choice !== 'Surprise') {
+        localStorage.setItem('sauce_preference', choice);
+      } else {
+        localStorage.setItem('sauce_preference', 'Surprise');
+      }
+      
+      // Redirect to homepage
+      window.location.href = 'index.html';
+    }
+  </script>
+
+</body>
+</html>
