@@ -6,59 +6,123 @@
   <title>Welcome to sauce.watch</title>
   <link rel="icon" href="logo.jpg" type="image/jpeg">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-  <!-- Tailwind via CDN just for this page for layout speed -->
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    :root {
+      --ea-sp: cubic-bezier(0.28, 0.11, 0.32, 1.00); /* Apple spring */
+    }
     body {
       background-color: #000;
       color: #fff;
       font-family: 'Inter', sans-serif;
       overflow: hidden;
     }
+    
+    /* Background Glows */
+    .bg-glow {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0) 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Staggered Animations */
+    .fade-in-up {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeInUp 0.8s var(--ea-sp) forwards;
+    }
+    @keyframes fadeInUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Button Styling */
     .greeting-btn {
-      background: #000;
+      position: relative;
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       color: #fff;
-      border: 2px solid #fff;
-      padding: 16px 24px;
+      padding: 18px 24px;
       font-size: 1.125rem;
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
       cursor: pointer;
-      transition: all 0.2s ease;
-      border-radius: 4px;
+      transition: all 0.3s var(--ea-sp);
+      border-radius: 12px;
       text-align: center;
+      overflow: hidden;
+      z-index: 10;
     }
+    
+    .greeting-btn::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+      transform: translateX(-100%);
+      transition: transform 0.5s ease;
+      z-index: -1;
+    }
+
     .greeting-btn:hover {
-      background: #fff;
-      color: #000;
+      transform: translateY(-4px) scale(1.02);
+      border-color: rgba(255, 255, 255, 0.5);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 10px 30px -10px rgba(255,255,255,0.1);
     }
+    
+    .greeting-btn:hover::before {
+      transform: translateX(100%);
+    }
+
     .surprise-btn {
-      border-style: dashed;
       background: transparent;
+      border: 1px dashed rgba(255, 255, 255, 0.3);
+      color: rgba(255, 255, 255, 0.7);
+    }
+    .surprise-btn:hover {
+      border: 1px solid #fff;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
     }
   </style>
 </head>
-<body class="flex flex-col justify-center items-center h-screen w-screen m-0">
+<body class="flex flex-col justify-center items-center h-screen w-screen m-0 relative">
 
-  <h1 class="text-4xl md:text-6xl font-black mb-12 text-center tracking-tight px-4">What are we in the mood for today?</h1>
-  
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 w-full max-w-4xl px-4">
-    <button class="greeting-btn" onclick="handleGreetingChoice('Hollywood')">Hollywood</button>
-    <button class="greeting-btn" onclick="handleGreetingChoice('Bollywood')">Bollywood</button>
-    <button class="greeting-btn" onclick="handleGreetingChoice('Chinese')">Chinese</button>
-    <button class="greeting-btn" onclick="handleGreetingChoice('Korean')">Korean</button>
-    <button class="greeting-btn" onclick="handleGreetingChoice('Thai')">Thai</button>
-    <button class="greeting-btn" onclick="handleGreetingChoice('Bisexual')">Bisexual</button>
-    <button class="greeting-btn" onclick="handleGreetingChoice('Anime')">Anime</button>
+  <div class="bg-glow"></div>
+
+  <div class="z-10 flex flex-col items-center w-full max-w-5xl px-6">
+    <h1 class="text-4xl md:text-6xl lg:text-7xl font-black mb-4 text-center tracking-tight fade-in-up" style="animation-delay: 0.1s;">
+      What are we in the mood for today?
+    </h1>
+    <p class="text-zinc-500 text-lg md:text-xl mb-12 fade-in-up text-center" style="animation-delay: 0.2s;">
+      Personalize your sauce.watch experience.
+    </p>
+    
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 w-full">
+      <button class="greeting-btn fade-in-up" style="animation-delay: 0.3s;" onclick="handleGreetingChoice('Hollywood')">Hollywood</button>
+      <button class="greeting-btn fade-in-up" style="animation-delay: 0.4s;" onclick="handleGreetingChoice('Bollywood')">Bollywood</button>
+      <button class="greeting-btn fade-in-up" style="animation-delay: 0.5s;" onclick="handleGreetingChoice('Chinese')">Chinese</button>
+      <button class="greeting-btn fade-in-up" style="animation-delay: 0.6s;" onclick="handleGreetingChoice('Korean')">Korean</button>
+      <button class="greeting-btn fade-in-up" style="animation-delay: 0.7s;" onclick="handleGreetingChoice('Thai')">Thai</button>
+      <button class="greeting-btn fade-in-up" style="animation-delay: 0.8s;" onclick="handleGreetingChoice('Bisexual')">Bisexual</button>
+      <button class="greeting-btn fade-in-up" style="animation-delay: 0.9s;" onclick="handleGreetingChoice('Anime')">Anime</button>
+    </div>
+    
+    <button class="greeting-btn surprise-btn fade-in-up w-full max-w-sm" style="animation-delay: 1.0s;" onclick="handleGreetingChoice('Surprise')">Surprise Me</button>
   </div>
-  
-  <button class="greeting-btn surprise-btn" onclick="handleGreetingChoice('Surprise')">Surprise Me</button>
 
   <script>
-    // If they already made a choice, don't let them stay on this page
+    // If they already made a choice, redirect instantly
     if (localStorage.getItem('sauce_preference')) {
-      window.location.href = 'index.html';
+      window.location.replace('index.html');
     }
 
     function handleGreetingChoice(choice) {
