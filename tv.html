@@ -94,31 +94,43 @@
     /* Player */
     #player-view {
       display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
       width: 100%;
       height: 100%;
+      background-color: #000;
+      z-index: 9999;
       text-align: left;
     }
     .back-btn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10000;
       display: inline-block;
-      padding: 15px 30px;
-      font-size: 24px;
-      background-color: #333;
+      padding: 12px 24px;
+      font-size: 20px;
+      background-color: #222;
       color: #fff;
       text-decoration: none;
       border: 4px solid transparent;
       border-radius: 8px;
-      margin: 20px;
       outline: none;
     }
     .back-btn:focus, .back-btn:hover {
       border-color: #FFFF00;
-      background-color: #555;
+      background-color: #444;
     }
     iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
       width: 100%;
-      height: 85vh;
+      height: 100%;
       border: none;
       background-color: #000;
+      z-index: 9998;
     }
     
     /* Utility */
