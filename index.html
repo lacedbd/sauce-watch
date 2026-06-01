@@ -681,9 +681,46 @@
       from { opacity: 0; transform: translateY(12px); }
       to   { opacity: 1; transform: translateY(0); }
     }
+    /* ── Greeting Overlay ── */
+    .greeting-btn {
+      background: #000;
+      color: #fff;
+      border: 2px solid #fff;
+      padding: 16px 24px;
+      font-size: 1.125rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border-radius: 4px;
+    }
+    .greeting-btn:hover {
+      background: #fff;
+      color: #000;
+    }
+    .surprise-btn {
+      border-style: dashed;
+      background: transparent;
+    }
   </style>
 </head>
 <body>
+
+<!-- Greeting Overlay -->
+<div id="greetingOverlay" class="fixed inset-0 z-[9999] bg-black flex flex-col justify-center items-center text-white transition-opacity duration-500">
+  <h1 class="text-4xl md:text-6xl font-black mb-12 text-center tracking-tight">What are we in the mood for today?</h1>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 w-full max-w-4xl px-4">
+    <button class="greeting-btn" onclick="handleGreetingChoice('Hollywood')">Hollywood</button>
+    <button class="greeting-btn" onclick="handleGreetingChoice('Bollywood')">Bollywood</button>
+    <button class="greeting-btn" onclick="handleGreetingChoice('Chinese')">Chinese</button>
+    <button class="greeting-btn" onclick="handleGreetingChoice('Korean')">Korean</button>
+    <button class="greeting-btn" onclick="handleGreetingChoice('Thai')">Thai</button>
+    <button class="greeting-btn" onclick="handleGreetingChoice('Bisexual')">Bisexual</button>
+    <button class="greeting-btn" onclick="handleGreetingChoice('Anime')">Anime</button>
+  </div>
+  <button class="greeting-btn surprise-btn" onclick="handleGreetingSurprise()">Surprise Me</button>
+</div>
 
 <!-- ══════════════════ NAVBAR ══════════════════ -->
 <nav id="mainNav">
@@ -2435,6 +2472,35 @@
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && mobileOverlay.classList.contains('open')) closeMobileSearch();
   });
+  // Greeting Overlay Logic
+  (function() {
+    var overlay = document.getElementById('greetingOverlay');
+    if (!overlay) return;
+    
+    if (localStorage.getItem('sauce_preference')) {
+      overlay.style.display = 'none';
+      return;
+    }
+
+    window.handleGreetingChoice = function(choice) {
+      localStorage.setItem('sauce_preference', choice);
+      closeGreetingOverlay();
+      if (typeof loadPersonalizedFeed === 'function') loadPersonalizedFeed(choice);
+    };
+
+    window.handleGreetingSurprise = function() {
+      closeGreetingOverlay();
+      if (typeof triggerSurpriseMe === 'function') triggerSurpriseMe();
+    };
+
+    function closeGreetingOverlay() {
+      overlay.style.opacity = '0';
+      setTimeout(function() {
+        overlay.style.display = 'none';
+        overlay.remove();
+      }, 500);
+    }
+  })();
 </script>
 
 </body>
