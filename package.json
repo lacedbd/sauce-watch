@@ -7,7 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@distube/ytdl-core": "^4.14.4"
+    "@distube/ytdl-core": "^4.14.4",
+    "@sparticuz/chromium": "^149.0.0",
+    "puppeteer-core": "^25.1.0"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.1"
