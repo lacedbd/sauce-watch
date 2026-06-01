@@ -1202,6 +1202,21 @@
   const W500 = "https://image.tmdb.org/t/p/w500";
   const W780 = "https://image.tmdb.org/t/p/w780";
 
+  // ── Category Preference Mapping ────────────────────────────────
+  function getCategoryFilter(category) {
+    if (!category || category === 'Surprise') return '';
+    switch (category) {
+      case 'Hollywood': return '&with_original_language=en';
+      case 'Bollywood': return '&with_original_language=hi';
+      case 'Chinese':   return '&with_original_language=zh';
+      case 'Korean':    return '&with_original_language=ko';
+      case 'Thai':      return '&with_original_language=th';
+      case 'Anime':     return '&with_genres=16&with_original_language=ja';
+      case 'Bisexual':  return '&with_keywords=9799|210024';
+      default:          return '';
+    }
+  }
+
   // ── fetchTMDB wrapper with Hybrid caching (Browser sessionStorage and Vercel CDN proxy) ──
   async function fetchTMDB(endpoint, queryParams = {}) {
     let path = endpoint;
@@ -1441,7 +1456,13 @@
 
   // ── Hero Slideshow & Trailer Autoplay ────────────────────────
   async function initHero() {
-    const res = await fetchTMDB(`${T}/trending/movie/day?api_key=${API}`);
+    let url = `${T}/trending/movie/day?api_key=${API}`;
+    const pref = localStorage.getItem('sauce_preference');
+    const filter = getCategoryFilter(pref);
+    if (filter) {
+      url = `${T}/discover/movie?api_key=${API}&sort_by=popularity.desc${filter}`;
+    }
+    const res = await fetchTMDB(url);
     const data = await res.json();
     slideshowMovies = (data.results || []).filter(m => m.backdrop_path && m.poster_path).slice(0, 6);
     if (slideshowMovies.length === 0) return;
@@ -1916,17 +1937,35 @@
 
   // ── Fetch all sections ────────────────────────────────────────
   async function fetchAll() {
-    const endpoints = [
-      { url: `${T}/trending/all/day?api_key=${API}`,                  grid: 'trendingGrid',      type: null,    opts: { showType: true } },
-      { url: `${T}/movie/now_playing?api_key=${API}`,                 grid: 'nowPlayingGrid',    type: 'movie', opts: {} },
-      { url: `${T}/movie/popular?api_key=${API}`,                     grid: 'popularMoviesGrid', type: 'movie', opts: {} },
-      { url: `${T}/tv/popular?api_key=${API}`,                        grid: 'tvShowsGrid',       type: 'tv',    opts: {} },
-      { url: `${T}/movie/top_rated?api_key=${API}`,                   grid: 'topRatedGrid',      type: 'movie', opts: {} },
-      { url: `${T}/discover/movie?api_key=${API}&with_keywords=2964&sort_by=popularity.desc`, grid: 'awardsGrid', type: 'movie', opts: {} },
-      { url: `${T}/movie/upcoming?api_key=${API}`,                    grid: 'latestGrid',        type: 'movie', opts: { isNew: true } },
-      { url: `${T}/discover/tv?api_key=${API}&with_networks=213`,     grid: 'netflixGrid',       type: 'tv',    opts: {} },
-      { url: `${T}/discover/tv?api_key=${API}&with_networks=2739`,    grid: 'disneyGrid',        type: 'tv',    opts: {} },
-    ];
+    const pref = localStorage.getItem('sauce_preference');
+    const filter = getCategoryFilter(pref);
+    let endpoints = [];
+    
+    if (filter) {
+      endpoints = [
+        { url: `${T}/discover/movie?api_key=${API}&sort_by=popularity.desc${filter}`,                  grid: 'trendingGrid',      type: 'movie', opts: { showType: true } },
+        { url: `${T}/discover/movie?api_key=${API}&sort_by=release_date.desc${filter}`,                grid: 'nowPlayingGrid',    type: 'movie', opts: {} },
+        { url: `${T}/discover/movie?api_key=${API}&sort_by=vote_count.desc${filter}`,                  grid: 'popularMoviesGrid', type: 'movie', opts: {} },
+        { url: `${T}/discover/tv?api_key=${API}&sort_by=popularity.desc${filter}`,                     grid: 'tvShowsGrid',       type: 'tv',    opts: {} },
+        { url: `${T}/discover/movie?api_key=${API}&sort_by=vote_average.desc&vote_count.gte=500${filter}`, grid: 'topRatedGrid', type: 'movie', opts: {} },
+        { url: `${T}/discover/movie?api_key=${API}&with_keywords=2964&sort_by=popularity.desc${filter}`, grid: 'awardsGrid',      type: 'movie', opts: {} },
+        { url: `${T}/discover/movie?api_key=${API}&primary_release_date.gte=2024-01-01${filter}`,      grid: 'latestGrid',        type: 'movie', opts: { isNew: true } },
+        { url: `${T}/discover/tv?api_key=${API}&with_networks=213${filter}`,                           grid: 'netflixGrid',       type: 'tv',    opts: {} },
+        { url: `${T}/discover/tv?api_key=${API}&with_networks=2739${filter}`,                          grid: 'disneyGrid',        type: 'tv',    opts: {} },
+      ];
+    } else {
+      endpoints = [
+        { url: `${T}/trending/all/day?api_key=${API}`,                  grid: 'trendingGrid',      type: null,    opts: { showType: true } },
+        { url: `${T}/movie/now_playing?api_key=${API}`,                 grid: 'nowPlayingGrid',    type: 'movie', opts: {} },
+        { url: `${T}/movie/popular?api_key=${API}`,                     grid: 'popularMoviesGrid', type: 'movie', opts: {} },
+        { url: `${T}/tv/popular?api_key=${API}`,                        grid: 'tvShowsGrid',       type: 'tv',    opts: {} },
+        { url: `${T}/movie/top_rated?api_key=${API}`,                   grid: 'topRatedGrid',      type: 'movie', opts: {} },
+        { url: `${T}/discover/movie?api_key=${API}&with_keywords=2964&sort_by=popularity.desc`, grid: 'awardsGrid', type: 'movie', opts: {} },
+        { url: `${T}/movie/upcoming?api_key=${API}`,                    grid: 'latestGrid',        type: 'movie', opts: { isNew: true } },
+        { url: `${T}/discover/tv?api_key=${API}&with_networks=213`,     grid: 'netflixGrid',       type: 'tv',    opts: {} },
+        { url: `${T}/discover/tv?api_key=${API}&with_networks=2739`,    grid: 'disneyGrid',        type: 'tv',    opts: {} },
+      ];
+    }
 
     await Promise.all(endpoints.map(async ({ url, grid, type, opts }) => {
       try {
@@ -2445,12 +2484,26 @@
   });
 
   // Call the personalized feed logic based on the user's saved preference
+  window.loadPersonalizedFeed = function(choice) {
+    const grids = ['trendingGrid', 'nowPlayingGrid', 'popularMoviesGrid', 'tvShowsGrid', 'topRatedGrid', 'awardsGrid', 'latestGrid', 'netflixGrid', 'disneyGrid'];
+    grids.forEach(function(grid) {
+      const el = document.getElementById(grid);
+      if (el) el.innerHTML = '';
+    });
+    initHero();
+    fetchAll();
+  };
+
+  window.triggerSurpriseMe = function() {
+    window.loadPersonalizedFeed('Surprise');
+  };
+
   var userPref = localStorage.getItem('sauce_preference');
   if (userPref) {
     if (userPref === 'Surprise') {
-      if (typeof triggerSurpriseMe === 'function') triggerSurpriseMe();
+      window.triggerSurpriseMe();
     } else {
-      if (typeof loadPersonalizedFeed === 'function') loadPersonalizedFeed(userPref);
+      window.loadPersonalizedFeed(userPref);
     }
   }
 </script>
