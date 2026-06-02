@@ -714,7 +714,6 @@
     <div class="absolute left-1/2 -translate-x-1/2">
       <div class="relative" id="mobileCategoryDropdownContainer">
         <button id="mobileCategoryDropdownBtn" onclick="toggleMobileDropdown(event)" class="flex items-center gap-1.5 text-white bg-white/5 border border-white/10 px-3 py-1.5 rounded-full hover:bg-white/10 transition-colors shadow-lg backdrop-blur-md">
-          <i class="fas fa-magic text-[10px] text-rose-500"></i>
           <span id="mobileCurrentCategoryLabel" class="text-xs font-semibold tracking-wide">Category</span>
           <i class="fas fa-chevron-down text-[8px] ml-0.5 opacity-50 transition-transform" id="mobileDropdownArrow"></i>
         </button>
@@ -768,8 +767,9 @@
   <div id="heroBg"></div>
   <div id="heroBgNext"></div>
   
-  <!-- Immersive background video trailer player (Removed) -->
+  <!-- Immersive background video trailer player -->
   <div id="heroTrailerWrapper" class="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0 opacity-0 transition-opacity duration-1000 hidden">
+    <div id="hero-youtube-player" class="absolute top-1/2 left-1/2 w-[300vw] h-[300vh] md:w-[150vw] md:h-[150vh] -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
   </div>
 
   <div class="hero-vignette z-10"></div>
@@ -814,6 +814,9 @@
          onmouseenter="this.style.transform='translateY(-1px)';this.style.background='rgba(63,63,70,0.9)'"
          onmouseleave="this.style.transform='';this.style.background=''">
         <i class="fas fa-plus"></i> My List
+      </button>
+      <button id="heroVolumeBtn" class="hidden w-11 h-11 rounded-full bg-zinc-800/80 border border-zinc-700 hover:bg-zinc-700 text-white flex items-center justify-center transition-all shadow-lg ml-2 z-[60] pointer-events-auto">
+        <i id="heroVolumeIcon" class="fas fa-volume-mute"></i>
       </button>
     </div>
   </div>
@@ -1345,6 +1348,118 @@
   let activeTrailerFetchId = 0;
   let heroIsMuted = true;
 
+  window.onYouTubeIframeAPIReady = function() {
+    heroYtApiReady = true;
+    if (pendingHeroTrailerKey) {
+      setupHeroTrailer(pendingHeroTrailerKey);
+    }
+  };
+
+  function setupHeroTrailer(videoKey) {
+    const playerDiv = document.getElementById('hero-youtube-player');
+    if (!playerDiv) return;
+    
+    if (heroTrailerPlayer && typeof heroTrailerPlayer.loadVideoById === 'function') {
+      try {
+        const wrapper = document.getElementById('heroTrailerWrapper');
+        wrapper.style.opacity = '0';
+        document.getElementById('heroBg').style.opacity = '1';
+        
+        heroTrailerPlayer.cueVideoById({
+          videoId: videoKey,
+          startSeconds: 0,
+          suggestedQuality: 'large'
+        });
+        if (heroIsMuted) {
+          heroTrailerPlayer.mute();
+        } else {
+          heroTrailerPlayer.unMute();
+        }
+        heroTrailerPlayer.playVideo();
+        return;
+      } catch (e) {
+        console.error("Error recycling hero player:", e);
+      }
+    }
+
+    try {
+      heroTrailerPlayer = new YT.Player('hero-youtube-player', {
+        width: '1920',
+        height: '1080',
+        videoId: videoKey,
+        playerVars: {
+          autoplay: 1,
+          mute: heroIsMuted ? 1 : 0,
+          controls: 0,
+          showinfo: 0,
+          rel: 0,
+          iv_load_policy: 3,
+          loop: 1,
+          playlist: videoKey,
+          playsinline: 1,
+          disablekb: 1,
+          fs: 0,
+          modestbranding: 1,
+          vq: 'large'
+        },
+        events: {
+          onReady: (event) => {
+            event.target.setPlaybackQuality('large');
+            if (heroIsMuted) {
+              event.target.mute();
+            } else {
+              event.target.unMute();
+            }
+            event.target.playVideo();
+          },
+          onStateChange: (event) => {
+            const wrapper = document.getElementById('heroTrailerWrapper');
+            const bg = document.getElementById('heroBg');
+            
+            if (event.data === YT.PlayerState.PLAYING) {
+              event.target.setPlaybackQuality('large');
+              setTimeout(() => {
+                if (wrapper && heroTrailerPlayer && heroTrailerPlayer.getVideoData()?.video_id === videoKey) {
+                  wrapper.classList.remove('hidden');
+                  wrapper.style.opacity = '1';
+                  bg.style.opacity = '0.05';
+                  const volBtn = document.getElementById('heroVolumeBtn');
+                  if (volBtn) volBtn.classList.remove('hidden');
+                }
+              }, 3500);
+            }
+          }
+        }
+      });
+    } catch(e) {
+      console.error("Error creating hero player:", e);
+    }
+  }
+
+  function initHeroVolumeToggle() {
+    const volBtn = document.getElementById('heroVolumeBtn');
+    if (!volBtn) return;
+    
+    volBtn.addEventListener('click', () => {
+      if (!heroTrailerPlayer || typeof heroTrailerPlayer.isMuted !== 'function') return;
+      
+      heroIsMuted = !heroIsMuted;
+      const icon = document.getElementById('heroVolumeIcon');
+      
+      if (heroIsMuted) {
+        heroTrailerPlayer.mute();
+        icon.className = 'fas fa-volume-mute';
+        volBtn.classList.remove('bg-rose-600', 'border-rose-500');
+        volBtn.classList.add('bg-zinc-800/80', 'border-zinc-700');
+      } else {
+        heroTrailerPlayer.unMute();
+        icon.className = 'fas fa-volume-up';
+        volBtn.classList.remove('bg-zinc-800/80', 'border-zinc-700');
+        volBtn.classList.add('bg-rose-600', 'border-rose-500');
+      }
+    });
+  }
+
   // ── Navbar & Mobile Nav scroll effects ──────────────────────────
   function handleScrollEffects() {
     const scrolled = window.scrollY > 40;
@@ -1831,13 +1946,19 @@
     const heroBgNext = document.getElementById('heroBgNext');
 
     if (skipBg) {
-      // Update background immediately
+      heroContent.style.opacity = '0';
+      if (heroTrailerPlayer && typeof heroTrailerPlayer.pauseVideo === 'function') {
+        try { heroTrailerPlayer.pauseVideo(); } catch(e) {}
+      }
+      const wrapper = document.getElementById('heroTrailerWrapper');
+      if (wrapper) { wrapper.style.opacity = '0'; wrapper.classList.add('hidden'); }
+      document.getElementById('heroBg').style.opacity = '1';
+      const volBtn = document.getElementById('heroVolumeBtn');
+      if (volBtn) volBtn.classList.add('hidden');
+      await new Promise(r => setTimeout(r, 200));
       heroBg.style.backgroundImage = `url('${IMG}${movie.backdrop_path}')`;
       heroBg.style.opacity = '1';
-      heroContent.style.opacity = '0';
-      await new Promise(r => setTimeout(r, 60));
     } else if (direction !== 0) {
-      // ── Directional slide (auto-advance) ──────────────────────────────────
       heroBgNext.style.backgroundImage = `url('${IMG}${movie.backdrop_path}')`;
       heroBgNext.style.opacity = '1';
       heroBgNext.style.animation = 'none';
@@ -1859,14 +1980,12 @@
       heroBgNext.style.opacity = '0';
       heroBgNext.classList.remove(inClass);
     } else {
-      // ── Neutral cross-fade (initial load / timer) ─────────────────────────
       heroContent.style.opacity = '0';
       await new Promise(r => setTimeout(r, 200));
       heroBg.style.backgroundImage = `url('${IMG}${movie.backdrop_path}')`;
       heroBg.style.opacity = '1';
     }
 
-    // ── Populate content ──────────────────────────────────────────────────────
     let logoUrl = null;
     try {
       const imgRes = await fetchTMDB(`${T}/movie/${movie.id}/images?api_key=${API}&include_image_language=en,null`);
@@ -1894,15 +2013,13 @@
 
     updateMyListButton(movie);
 
-    // Slide-in content from the swipe direction
     heroContent.style.animation = 'none';
-    void heroContent.offsetWidth; // reflow
+    void heroContent.offsetWidth; 
     if (direction !== 0) {
       const contentClass = direction > 0 ? 'content-slide-in-right' : 'content-slide-in-left';
       heroContent.classList.remove('content-slide-in-right', 'content-slide-in-left');
       heroContent.classList.add(contentClass);
       heroContent.style.opacity = '1';
-      // Clean up after animation
       setTimeout(() => heroContent.classList.remove(contentClass), 800);
     } else {
       heroContent.style.opacity = '1';
@@ -1911,6 +2028,24 @@
     updateThumbs(skipBg);
     updateDots();
     startSlideshow();
+
+    const fetchId = ++activeTrailerFetchId;
+    try {
+      const vidRes = await fetch(`${T}/${movie.media_type || 'movie'}/${movie.id}/videos?api_key=${API}`);
+      const vidData = await vidRes.json();
+      if (fetchId !== activeTrailerFetchId) return;
+      const videos = vidData.results || [];
+      const trailer = videos.find(v => v.site === 'YouTube' && v.type === 'Trailer') ||
+                      videos.find(v => v.site === 'YouTube' && v.type === 'Teaser') ||
+                      videos.find(v => v.site === 'YouTube');
+      if (trailer?.key) {
+        if (heroYtApiReady) {
+          setupHeroTrailer(trailer.key);
+        } else {
+          pendingHeroTrailerKey = trailer.key;
+        }
+      }
+    } catch(e) {}
   }
 
   // ── Continue Watching (localStorage) ─────────────────────────
@@ -2271,6 +2406,7 @@
 
   // ── Init ──────────────────────────────────────────────────────
   window.addEventListener('DOMContentLoaded', async () => {
+    initHeroVolumeToggle();
     await loadGenres();
     await initHero();
     await loadContinueWatching();
