@@ -70,7 +70,7 @@
     /* ── Navbar ── */
     #mainNav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-      padding: 18px 40px;
+      padding: max(18px, env(safe-area-inset-top)) 40px 18px 40px;
       transition:
         background   var(--t3) var(--ea),
         backdrop-filter var(--t3) var(--ea),
@@ -85,7 +85,7 @@
       border-bottom-color: rgba(255,255,255,0.05);
     }
     @media (max-width: 767px) {
-      #mainNav { padding: 14px 20px; }
+      #mainNav { padding: max(14px, env(safe-area-inset-top)) 20px 14px 20px; }
     }
 
     /* ── Mobile Bottom Nav ── */
