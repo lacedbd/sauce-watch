@@ -565,8 +565,37 @@
         }
 
         let ytPlayer = null;
-        let bgPlayTimeout = null;
+        let isMuted = true;
+        let trailerIsPlaying = false;
         let pendingYtKey = null;
+
+        let watchHasInteracted = false;
+        function handleFirstWatchInteraction() {
+            if (watchHasInteracted) return;
+            watchHasInteracted = true;
+            
+            // Try native video
+            const videoEl = document.getElementById('trailer-video');
+            if (videoEl && videoEl.src && videoEl.paused) {
+                videoEl.play().catch(e => {});
+            }
+            
+            // Try YT player
+            if (ytPlayer && typeof ytPlayer.playVideo === 'function') {
+                try {
+                    const state = ytPlayer.getPlayerState();
+                    if (state !== 1) ytPlayer.playVideo();
+                } catch(e) {}
+            }
+            
+            window.removeEventListener('touchstart', handleFirstWatchInteraction);
+            window.removeEventListener('click', handleFirstWatchInteraction);
+            window.removeEventListener('scroll', handleFirstWatchInteraction);
+        }
+
+        window.addEventListener('touchstart', handleFirstWatchInteraction, { passive: true });
+        window.addEventListener('click', handleFirstWatchInteraction, { passive: true });
+        window.addEventListener('scroll', handleFirstWatchInteraction, { passive: true });
 
         // Called by YouTube API when it's fully loaded
         window.onYouTubeIframeAPIReady = function() {

@@ -1350,6 +1350,27 @@
   let pendingHeroTrailerKey = '';
   let activeTrailerFetchId = 0;
   let heroIsMuted = true;
+  let heroHasInteracted = false;
+
+  function handleFirstInteraction() {
+    if (heroHasInteracted) return;
+    heroHasInteracted = true;
+    if (heroTrailerPlayer && typeof heroTrailerPlayer.playVideo === 'function') {
+      try {
+        const state = heroTrailerPlayer.getPlayerState();
+        if (state !== 1) { // 1 = PLAYING
+          heroTrailerPlayer.playVideo();
+        }
+      } catch(e) {}
+    }
+    window.removeEventListener('touchstart', handleFirstInteraction);
+    window.removeEventListener('click', handleFirstInteraction);
+    window.removeEventListener('scroll', handleFirstInteraction);
+  }
+
+  window.addEventListener('touchstart', handleFirstInteraction, { passive: true });
+  window.addEventListener('click', handleFirstInteraction, { passive: true });
+  window.addEventListener('scroll', handleFirstInteraction, { passive: true });
 
   window.onYouTubeIframeAPIReady = function() {
     heroYtApiReady = true;
